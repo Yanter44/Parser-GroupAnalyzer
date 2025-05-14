@@ -6,6 +6,12 @@ namespace MpParserAPI.Interfaces
     {
         void AddOrUpdateParser(Guid parserId, ParserData data);
         bool TryGetParser(Guid parserId, out ParserData data);
-        void RemoveParser(Guid parserId);
+        void TryRemoveParser(Guid parserId);
+        bool ContainsParser(Guid parserId);
+
+        void AddOrUpdateTemporaryAuthData(Guid parserId, TemporaryAuthData temporarydata);
+        bool TryGetTemporaryAuthData(Guid parserId, out TemporaryAuthData tempData);
+        TemporaryAuthData GetOrCreateTemporaryAuthData(Guid parserId);
+        void TryRemoveTemporaryAuthData(Guid parserId);
     }
 }
