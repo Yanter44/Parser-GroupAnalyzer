@@ -48,10 +48,12 @@ namespace MpParserAPI.Controllers
 
             return BadRequest(result.Message);
         }
+
         [HttpPost("EnterToSessionByKeyAndPassword")] 
-        public async Task<IActionResult> EnterToSessionByKeyAndPassword([FromBody] LoginToSessionDto logindto)
+        public async Task<ActionResult<EnterToSessionByKeyResponceDto>> EnterToSessionByKeyAndPassword([FromBody] LoginToSessionDto logindto)
         {
-            return Ok();
+            var result = await _parser.EnterToSessionByKeyAndPassword(logindto);
+            return result.Success ? Ok(result.Data) : BadRequest(result.Message);
         }
 
     }

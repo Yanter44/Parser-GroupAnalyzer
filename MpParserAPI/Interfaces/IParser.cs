@@ -10,7 +10,8 @@ namespace MpParserAPI.Interfaces
         Task<OperationResult> SetGroupsNamesForParser(Guid clientId, IEnumerable<string> groupNames);
         Task<OperationResult> SubmitVerificationCodeFromTelegram(Guid clientId, int verificationCode);
         Task<OperationResult> SubmitTwoFactorPassword(Guid clientId, int twofactorpassword);
-        Task<OperationResult> EnterToSessionByKeyAndPassword(LoginToSessionDto logindata);
+        Task<OperationResult<EnterToSessionByKeyResponceDto>> EnterToSessionByKeyAndPassword(LoginToSessionDto logindata);
+
         void StopParser(Guid clientId);
     }
 }

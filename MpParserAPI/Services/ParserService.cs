@@ -1,5 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using MpParserAPI.Common;
+using MpParserAPI.Controllers;
 using MpParserAPI.DbContext;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models;
@@ -14,15 +16,21 @@ using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 public class ParserService : IParser
 {
     private readonly ICloudinaryService _cloudinaryService;
-    private readonly ParserDbContext _parserDatabase;
+    private readonly IGenerator _generatorService;
+    private readonly IDbContextFactory<ParserDbContext> _dbContextFactory;
     private readonly IParserDataStorage _parserStorage;
-    public ParserService(ICloudinaryService cloudinaryService, 
-                         ParserDbContext parserDb,
-                         IParserDataStorage parserStorage)
+    private readonly IHubContext<ParserHub> _parserHubContext;
+    public ParserService(ICloudinaryService cloudinaryService,
+                         IGenerator generator,
+                         IDbContextFactory<ParserDbContext> dbContextFactory,
+                         IParserDataStorage parserStorage,
+                         IHubContext<ParserHub> parserhubContext)
     {
         _cloudinaryService = cloudinaryService;
-        _parserDatabase = parserDb;
+        _generatorService = generator;
+        _dbContextFactory = dbContextFactory;
         _parserStorage = parserStorage;
+        _parserHubContext = parserhubContext;
     }
     public async Task<OperationResult> LoginAndStartParser(AuthentificateDto logindata)
     {
@@ -33,7 +41,8 @@ public class ParserService : IParser
             return OperationResult.Fail("Данные о логине были пусты.");
         }
         var parserId = Guid.NewGuid();
-        var parserData = new ParserData(parserId, logindata.phone, logindata.apiid, logindata.apihash);
+        var generatedPassword = _generatorService.GenerateRandomPassword();
+        var parserData = new ParserData(parserId, generatedPassword, logindata.phone, logindata.apiid, logindata.apihash);
 
         _parserStorage.AddOrUpdateParser(parserId, parserData);
         await InitializeClient(parserId);
@@ -47,7 +56,7 @@ public class ParserService : IParser
                 return OperationResult.Fail($"Ваш созданный ParserId {parserId} Введите двухфакторный пароль от аккаунта: /Auth/SendATwoFactorPassword");
 
             case TelegramAuthState.Authorized:
-                return OperationResult.Ok($"Парсер запущен успешно. Ваш ParserId {parserId}");
+                return OperationResult.Ok($"Парсер запущен успешно. Ваш ParserId {parserId}, и Пароль от сессии {generatedPassword}");
 
             default:
                 return OperationResult.Fail("Ошибка авторизации.");
@@ -138,8 +147,8 @@ public class ParserService : IParser
                                 if (dialogs.users.TryGetValue(userId, out var user))
                                 {
                                     var userPhotoId = user.photo?.photo_id;
-
-                                    var existingTelegramUser = await _parserDatabase.TelegramUsers
+                                    await using var database = _dbContextFactory.CreateDbContext();
+                                    var existingTelegramUser = await database.TelegramUsers
                                         .FirstOrDefaultAsync(x => x.TelegramUserId == userId);
 
                                     string imageUrl = null;
@@ -160,14 +169,14 @@ public class ParserService : IParser
                                         existingTelegramUser = new TelegramUser
                                         {
                                             TelegramUserId = user.id,
-                                            FirstName = user.first_name,
-                                            LastName = user.last_name,
-                                            Username = user.username,
-                                            Phone = user.phone,
+                                            FirstName = user.first_name ?? "Отсутствует",
+                                            LastName = user.last_name ?? "Отсутствует",
+                                            Username = user.username ?? "Отсутствует",
+                                            Phone = user.phone ?? "Отсутствует",
                                             ProfileImageUrl = imageUrl,
                                             ProfilePhotoId = userPhotoId 
                                         };
-                                        _parserDatabase.TelegramUsers.Add(existingTelegramUser);
+                                        database.TelegramUsers.Add(existingTelegramUser);
                                     }
                                     else
                                     {
@@ -182,7 +191,7 @@ public class ParserService : IParser
                                         }
 
                                         existingTelegramUser.ProfilePhotoId = userPhotoId; 
-                                        _parserDatabase.TelegramUsers.Update(existingTelegramUser);
+                                        database.TelegramUsers.Update(existingTelegramUser);
                                     }
 
                                     var parserlog = new ParserLogs
@@ -192,9 +201,17 @@ public class ParserService : IParser
                                         MessageText = msg.message
                                     };
 
-                                    _parserDatabase.ParserLogsTable.Add(parserlog);
-                                    await _parserDatabase.SaveChangesAsync();
 
+                                    database.ParserLogsTable.Add(parserlog);
+                                    await database.SaveChangesAsync();
+                                    //тут пересмотреть моментик
+                                    await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ReceiveMessage", new
+                                    {
+                                        ProfileImageUrl = imageUrl,
+                                        Name = user.first_name,
+                                        Username = user.username,
+                                        MessageText = msg.message
+                                    });
                                     Console.WriteLine("Сообщение из отслеживаемой группы:");
                                     Console.WriteLine($"ID: {user.id}");
                                     Console.WriteLine($"Имя: {user.first_name} {user.last_name}");
@@ -331,12 +348,22 @@ public class ParserService : IParser
         return OperationResult.Ok("Ключевые слова успешно установлены.");
     }
     
-    public async Task<OperationResult> EnterToSessionByKeyAndPassword(LoginToSessionDto logindata)
+    public async Task<OperationResult<EnterToSessionByKeyResponceDto>> EnterToSessionByKeyAndPassword(LoginToSessionDto logindata)
     {
         if (_parserStorage.TryGetParser(logindata.SessionKey, out var parser))
         {
-            var existParserLogs = await _parserDatabase.ParserLogsTable.Where(x => x.ParserId == logindata.SessionKey).ToListAsync();
+            if(parser.Password == logindata.SessionPassword)
+            {
+                await using var database = _dbContextFactory.CreateDbContext();
+                var existParserLogs = await database.ParserLogsTable.Where(x => x.ParserId == logindata.SessionKey).ToListAsync();
+                var responsedto = new EnterToSessionByKeyResponceDto()
+                {
+                    ParserData = parser,
+                    ParserLogs = existParserLogs
+                };
+                return OperationResult<EnterToSessionByKeyResponceDto>.Ok(responsedto);
+            }
         }
-        return OperationResult.Ok("fsdf");
+        return OperationResult<EnterToSessionByKeyResponceDto>.Fail("Неверный ключ сессии или пароль");
     }
 }

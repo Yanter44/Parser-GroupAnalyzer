@@ -3,16 +3,23 @@ using MpParserAPI.Controllers;
 using MpParserAPI.DbContext;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Services;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
-builder.Services.AddDbContext<ParserDbContext>(options =>
+builder.Services.AddDbContextFactory<ParserDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("ParserDb")));
+
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateLogger();
 
 builder.Services.AddScoped<IParser, ParserService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddSingleton<IParserDataStorage, ParserDataStorage>();
+builder.Services.AddTransient<IGenerator, Generator>();
+builder.Services.AddSignalR();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -30,6 +37,8 @@ builder.Services.AddCors(options =>
     });
 });
 var app = builder.Build();
+app.MapHub<ParserHub>("/parserHub");
+
 app.UseCors("AllowAllOrigins");
 if (app.Environment.IsDevelopment())
 {

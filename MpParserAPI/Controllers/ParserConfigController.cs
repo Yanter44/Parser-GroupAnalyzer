@@ -14,7 +14,6 @@ namespace MpParserAPI.Controllers
             _parser = parser;
         }
 
-
         [HttpPost("StopParser")]
         public IActionResult StopParser([FromBody] Guid clientId)
         {
