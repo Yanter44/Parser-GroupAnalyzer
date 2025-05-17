@@ -2,7 +2,7 @@
 {
     public class EnterToSessionByKeyResponceDto
     {
-        public ParserData ParserData { get; set; }
-        public List<ParserLogs> ParserLogs { get; set; }
+        public ParserDataResponceDto parserDataResponceDto { get; set; }
+        public List<ParserLogs> parserLogs { get; set; }
     }
 }
