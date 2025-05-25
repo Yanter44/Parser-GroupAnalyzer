@@ -8,20 +8,18 @@ namespace MpParserAPI.Models
         public Guid Id { get; set; }
         public string Password { get; set; }
         public string[] Keywords { get; set; }
-        public string ApiId { get; set; }
-        public string ApiHash { get; set; }
         public string Phone { get; set; }
+        public bool IsParsingStarted { get; set; }
+
         public Client Client { get; set; } //TELEGRAM CLIENT
         public List<InputPeer> TargetGroups { get; set; }
         public TelegramAuthState AuthState { get; set; }
 
-        public ParserData(Guid _parserId, string password,string phone, string apiId, string apiHash)
+        public ParserData(Guid _parserId, string password,string phone)
         {
             Id = _parserId;
             Password = password;
             Phone = phone;
-            ApiId = apiId;
-            ApiHash = apiHash;
             AuthState = TelegramAuthState.None;
             TargetGroups = new List<InputPeer>();
         }

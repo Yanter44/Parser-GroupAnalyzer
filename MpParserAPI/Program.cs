@@ -31,10 +31,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAllOrigins", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowCredentials()
-              .AllowAnyHeader()  
-              .AllowAnyMethod(); 
+        policy.WithOrigins("http://localhost:8000") 
+          .AllowCredentials()               
+          .AllowAnyHeader()
+          .AllowAnyMethod();
     });
 });
 var app = builder.Build();

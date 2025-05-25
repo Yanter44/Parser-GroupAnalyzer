@@ -34,17 +34,17 @@ public class ParserService : IParser
     }
     public async Task<OperationResult<ParserAuthResultDto>> LoginAndStartParser(AuthentificateDto logindata)
     {
-        if (string.IsNullOrWhiteSpace(logindata.apiid) ||
-            string.IsNullOrWhiteSpace(logindata.apihash) ||
-            string.IsNullOrWhiteSpace(logindata.phone))
-        {
-            return OperationResult<ParserAuthResultDto>.Fail("Данные о логине были пусты.");
-        }
+        if (string.IsNullOrWhiteSpace(logindata.phone))
+            return OperationResult<ParserAuthResultDto>.Fail("Данные о логине были пусты.");     
 
         var parserId = Guid.NewGuid();
         var generatedPassword = _generatorService.GenerateRandomPassword();
 
-        var parserData = new ParserData(parserId, generatedPassword, logindata.phone, logindata.apiid, logindata.apihash);
+        if (IsPhoneAlreadyInUse(logindata.phone))
+                    return OperationResult<ParserAuthResultDto>.Fail("Этот аккаунт уже используется. Войдите в старую сессию или используйте другой аккаунт.");
+
+        var parserData = new ParserData(parserId, generatedPassword, logindata.phone);
+       
         _parserStorage.AddOrUpdateParser(parserId, parserData);
 
         await InitializeClient(parserId);
@@ -74,16 +74,10 @@ public class ParserService : IParser
                 return OperationResult<ParserAuthResultDto>.Fail("Ошибка авторизации.");
         }
     }
-    public void StartParsing(Guid parserId)
+
+    public bool IsPhoneAlreadyInUse(string phone)
     {
-        if (_parserStorage.TryGetParser(parserId, out var parser) && parser.Client != null)
-        {
-            parser.Client.OnUpdates += async update => await HandleUpdate(parserId, update);
-        }
-    }
-    public void StopParsing(Guid parserId)
-    {
-        throw new NotImplementedException();
+        return _parserStorage.GetAllParsers().Any(p => p.Phone == phone && p.Client != null);
     }
 
 
@@ -107,34 +101,42 @@ public class ParserService : IParser
 
             case null:
                 parser.AuthState = TelegramAuthState.Authorized;
-                client.OnUpdates += async update => await HandleUpdate(parserId, update);
                 return;
         }
     }
 
-
-
-    public void DisposeParser(Guid parserId)
-    {
-        if (_parserStorage.TryGetParser(parserId, out var parser))
-        {
-            parser.DisposeData();
-            _parserStorage.TryRemoveParser(parserId);
-        }
-    }
 
     private string Config(string what, Guid parserId)
     {
         _parserStorage.TryGetParser(parserId, out var parser);
         _parserStorage.TryGetTemporaryAuthData(parserId, out var temporarydata);
 
+        if (what == "session_pathname")
+        {
+            var sessionsFolder = Path.Combine(AppContext.BaseDirectory, "sessions");
+            if (!Directory.Exists(sessionsFolder))
+                Directory.CreateDirectory(sessionsFolder);
+
+            var phone = parser?.Phone;
+            if (string.IsNullOrEmpty(phone))
+                return null;
+
+            var cleanedPhone = new string(phone.Where(char.IsDigit).ToArray());
+
+            return Path.Combine(sessionsFolder, $"session_{cleanedPhone}.session");
+        }
+
         return what switch
         {
-            "api_id" => parser?.ApiId,
-            "api_hash" => parser?.ApiHash,
+            "api_id" => "22262339",
+            "api_hash" => "fc15371db5ea0ba274b93faf572aec6b",
             "phone_number" => parser?.Phone,
-            "verification_code" => temporarydata?.VerificationCode?.ToString(),
-            "password" => temporarydata?.TwoFactorPassword.ToString(),
+            "verification_code" => temporarydata?.VerificationCode != null
+                ? temporarydata.VerificationCode.ToString()
+                : null,
+            "password" => temporarydata?.TwoFactorPassword != null
+                ? temporarydata.TwoFactorPassword.ToString()
+                : null,
             _ => null
         };
     }
@@ -179,15 +181,25 @@ public class ParserService : IParser
 
                                     if (existingTelegramUser == null || existingTelegramUser.ProfilePhotoId != userPhotoId)
                                     {
-                                        await using var userProfileImageBytes = new MemoryStream();
-                                        await parserData.Client.DownloadProfilePhotoAsync(user, userProfileImageBytes, true, true);
-                                        userProfileImageBytes.Position = 0;
-
-                                        if (userProfileImageBytes.Length > 0)
+                                        if (user.photo != null)
                                         {
-                                            imageUrl = await _cloudinaryService.UploadImageAsync(userProfileImageBytes.ToArray());
+                                            await using var userProfileImageBytes = new MemoryStream();
+                                            await parserData.Client.DownloadProfilePhotoAsync(user, userProfileImageBytes, true, true);
+                                            userProfileImageBytes.Position = 0;
+
+                                            if (userProfileImageBytes.Length > 0)
+                                            {
+                                                imageUrl = await _cloudinaryService.UploadImageAsync(userProfileImageBytes.ToArray());
+                                            }
+                                        }
+
+                                        if (string.IsNullOrEmpty(imageUrl))
+                                        {
+                                            imageUrl = "https://res.cloudinary.com/ddg6n36uq/image/upload/v1747355623/c31bd024-f78b-459b-b96a-438eeb186eeb.png";
                                         }
                                     }
+                                    else { imageUrl = existingTelegramUser.ProfileImageUrl; }
+
                                     if (existingTelegramUser == null)
                                     {
                                         existingTelegramUser = new TelegramUser
@@ -204,10 +216,10 @@ public class ParserService : IParser
                                     }
                                     else
                                     {
-                                        existingTelegramUser.FirstName = user.first_name;
-                                        existingTelegramUser.LastName = user.last_name;
-                                        existingTelegramUser.Username = user.username;
-                                        existingTelegramUser.Phone = user.phone;
+                                        existingTelegramUser.FirstName = user.first_name ?? "Отсутствует";
+                                        existingTelegramUser.LastName = user.last_name ?? "Отсутствует";
+                                        existingTelegramUser.Username = user.username ?? "Отсутствует";
+                                        existingTelegramUser.Phone = user.phone ?? "Отсутствует";
 
                                         if (!string.IsNullOrEmpty(imageUrl))
                                         {
@@ -228,7 +240,7 @@ public class ParserService : IParser
 
                                     database.ParserLogsTable.Add(parserlog);
                                     await database.SaveChangesAsync();
-                                    //тут пересмотреть моментик
+
                                     await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ReceiveMessage", new
                                     {
                                         ProfileImageUrl = imageUrl,
@@ -252,15 +264,8 @@ public class ParserService : IParser
         }
     }
 
-
-
-
     public async Task<OperationResult<object>> SetGroupsNamesForParser(Guid parserId, IEnumerable<string> groupNames)
     {
-        if (groupNames == null || !groupNames.Any())
-        {
-            return OperationResult<object>.Fail("Список групп не может быть пустым.");
-        }
         if (!_parserStorage.ContainsParser(parserId))
         {
             return OperationResult<object>.Fail($"Парсер с id {parserId} не найден.");
@@ -307,19 +312,15 @@ public class ParserService : IParser
         string loginResult;
         try
         {
+            ResetClient(parserId);
+            parser = _parserStorage.GetParser(parserId);
+            client = parser.Client;
             loginResult = await client.Login(parser.Phone);
         }
         catch (TL.RpcException ex) when (ex.Message == "PHONE_CODE_INVALID")
         {
+            temp.VerificationCode = null;
             return OperationResult<ParserAuthResultDto>.Fail("Неверный код подтверждения.");
-        }
-        catch (TL.RpcException ex)
-        {
-            return OperationResult<ParserAuthResultDto>.Fail($"Ошибка Telegram API: {ex.Message}");
-        }
-        catch (Exception ex)
-        {
-            return OperationResult<ParserAuthResultDto>.Fail($"Ошибка при попытке входа: {ex.Message}");
         }
 
         switch (loginResult)
@@ -333,7 +334,6 @@ public class ParserService : IParser
 
             case null:
                 parser.AuthState = TelegramAuthState.Authorized;
-                client.OnUpdates += async update => await HandleUpdate(parserId, update);
                 _parserStorage.TryRemoveTemporaryAuthData(parserId);
 
                 return OperationResult<ParserAuthResultDto>.Ok(
@@ -349,42 +349,46 @@ public class ParserService : IParser
                 return OperationResult<ParserAuthResultDto>.Fail("Неизвестный результат авторизации.");
         }
     }
-
-
-
-
-    public async Task<OperationResult<object>> SubmitTwoFactorPassword(Guid parserId, int twofactorpassword)
+    public void ResetClient(Guid parserId)
+    {
+        _parserStorage.TryGetParser(parserId, out var parser);
+        parser.Client.Dispose();
+        parser.Client = new WTelegram.Client(what => Config(what, parserId));
+    }
+    public async Task<OperationResult<ParserAuthResultDto>> SubmitTwoFactorPassword(Guid parserId, int twofactorpassword)
     {
         if (!_parserStorage.ContainsParser(parserId))
-        {
-            return OperationResult<object>.Fail($"Парсер с Id {parserId} не найден.");
-        }
+            return OperationResult<ParserAuthResultDto>.Fail($"Парсер с Id {parserId} не найден.");
+
         _parserStorage.TryGetParser(parserId, out var parser);
         var client = parser.Client;
         var temp = _parserStorage.GetOrCreateTemporaryAuthData(parserId);
         temp.TwoFactorPassword = twofactorpassword;
 
-        var loginResult = await client.Login(parser.Phone);
-
-        switch (loginResult)
+        try
         {
-            case "password":
-                parser.AuthState = TelegramAuthState.NeedPassword;
-                return OperationResult<object>.Fail("Нужен двухфакторный пароль. Отправьте его через /Auth/SubmitTwoFactorPassword");
+            ResetClient(parserId);
+            parser = _parserStorage.GetParser(parserId);
+            client = parser.Client;
 
-            case "verification_code":
-                parser.AuthState = TelegramAuthState.NeedVerificationCode;
-                return OperationResult<object>.Fail("Необходим код верификации, который вам прислал Telegram. Отправьте его через /Auth/SendVerificationCodeFromTelegram");
+            var loginResult = await client.Login(parser.Phone);
 
-            case null:
-                parser.AuthState = TelegramAuthState.Authorized;
-                client.OnUpdates += async update => await HandleUpdate(parserId, update);
-                _parserStorage.TryRemoveTemporaryAuthData(parserId);
-                return OperationResult<object>.Ok("Успешно вошли в Telegram.");
+             parser.AuthState = TelegramAuthState.Authorized;
+             _parserStorage.TryRemoveTemporaryAuthData(parserId);
+
+            return OperationResult<ParserAuthResultDto>.Ok(new ParserAuthResultDto {ParserId = parserId, Password = parser.Password},"Успешно вошли в Telegram.");
         }
-
-        return OperationResult<object>.Fail("Неизвестный результат авторизации.");
+        catch (Exception ex)
+        {
+            if (ex.Message.Contains("PASSWORD_HASH_INVALID") || ex.Message.Contains("invalid password"))
+            {
+                return OperationResult<ParserAuthResultDto>.Fail("Неверный двухфакторный пароль.");
+            }
+            return OperationResult<ParserAuthResultDto>.Fail("Ошибка авторизации: " + ex.Message);
+        }
     }
+
+
 
     public async Task<OperationResult<object>> SetKeywordsFromText(Guid parserId, string text)
     {
@@ -404,36 +408,27 @@ public class ParserService : IParser
         return OperationResult<object>.Ok("Ключевые слова успешно установлены.");
     }
 
-    public async Task<OperationResult<EnterToSessionByKeyResponceDto>> EnterToSessionByKeyAndPassword(Guid parserId, string sessionPassword)
+    public async Task<OperationResult<ParserAuthResultDto>> EnterToSessionByKeyAndPassword(Guid parserId, string sessionPassword)
     {
         if (_parserStorage.TryGetParser(parserId, out var parser))
         {
             if (parser.Password == sessionPassword)
             {
-                await using var database = _dbContextFactory.CreateDbContext();
-                var existParserLogs = await database.ParserLogsTable
-                                                    .Where(x => x.ParserId == parserId)
-                                                    .ToListAsync();
-
-                var responseDto = new EnterToSessionByKeyResponceDto
+                return OperationResult<ParserAuthResultDto>.Ok(new ParserAuthResultDto
                 {
-                    parserDataResponceDto = new ParserDataResponceDto
-                    {
-                        ProfileImageUrl = "https://res.cloudinary.com/ddg6n36uq/image/upload/v1747355623/c31bd024-f78b-459b-b96a-438eeb186eeb.png",
-                        ProfileNickName = parser.Client.User.username ?? "Ник отсутствует"
-                    },
-                    parserLogs = existParserLogs
-                };
-
-                return OperationResult<EnterToSessionByKeyResponceDto>.Ok(responseDto);
+                    ParserId = parserId,
+                    Password = sessionPassword
+                }, "Вход в сессию выполнен.");
             }
         }
 
-        return OperationResult<EnterToSessionByKeyResponceDto>.Fail("Неверный ключ сессии или пароль.");
+        return OperationResult<ParserAuthResultDto>.Fail("Неверный ключ сессии или пароль.");
     }
+
 
     public async Task<bool> IsParserAuthValid(Guid parserId, string password)
     {
+
         if (_parserStorage.TryGetParser(parserId, out var parser))
         {
             if (parser.Password == password)
@@ -443,4 +438,100 @@ public class ParserService : IParser
         return false;
     }
 
+    public async Task<GetParserStateResponceDto> GetParserState(Guid parserId)
+    {
+        if (!_parserStorage.TryGetParser(parserId, out var parser) || parser.Client == null)
+            return null;
+
+        await using var db = _dbContextFactory.CreateDbContext();
+
+        string profileImageUrl = null;
+        string profileNickName = parser.Client.User.username ?? "Ник отсутствует";
+
+        var photo = parser.Client.User.photo;
+        var photoId = photo?.photo_id;
+        var telegramUserId = parser.Client.User.ID;
+
+        var existingUser = await db.TelegramUsers.FirstOrDefaultAsync(x => x.TelegramUserId == telegramUserId);
+
+        if (photo == null)
+        {
+            profileImageUrl = "https://res.cloudinary.com/ddg6n36uq/image/upload/v1747355623/c31bd024-f78b-459b-b96a-438eeb186eeb.png";
+        }
+        else if (existingUser == null || existingUser.ProfilePhotoId != photoId)
+        {
+            using var userProfileImageBytes = new MemoryStream();
+            var result = await parser.Client.DownloadProfilePhotoAsync(parser.Client.User, userProfileImageBytes, true, true);
+            userProfileImageBytes.Position = 0;
+
+            profileImageUrl = userProfileImageBytes.Length > 0
+                ? await _cloudinaryService.UploadImageAsync(userProfileImageBytes.ToArray())
+                : "https://res.cloudinary.com/ddg6n36uq/image/upload/v1747355623/c31bd024-f78b-459b-b96a-438eeb186eeb.png";
+        }
+        else
+        {
+            profileImageUrl = existingUser.ProfileImageUrl;
+        }
+
+        var parserLogsRaw = await db.ParserLogsTable
+            .Where(x => x.ParserId == parserId)
+            .Include(x => x.TelegramUser)
+            .Select(x => new ParserLogsResponceDto
+            {
+                MessageText = x.MessageText,
+                FirstName = x.TelegramUser.FirstName,
+                Username = x.TelegramUser.Username,
+                ProfileImageUrl = x.TelegramUser.ProfileImageUrl
+            })
+            .ToListAsync();
+
+        var targetGroupsDisplay = parser.TargetGroups?.Select(g => g.ToString()).ToList() ?? new();
+
+        var response = new GetParserStateResponceDto
+        {
+            parserDataResponceDto = new ParserDataResponceDto
+            {
+                IsParsingStarted = parser.IsParsingStarted,
+                Parserkeywords = parser.Keywords,
+                ProfileImageUrl = profileImageUrl,
+                ProfileNickName = profileNickName,
+                TargetGroups = targetGroupsDisplay,
+                ParserId = parser.Id, 
+                ParserPassword = parser.Password 
+            },
+            parserLogs = parserLogsRaw
+        };
+
+        return response;
+    }
+    public void StartParsing(Guid parserId)
+    {
+        if (_parserStorage.TryGetParser(parserId, out var parser) && parser.Client != null)
+        {
+            Func<IObject, Task> handler = async update => await HandleUpdate(parserId, update);
+
+            parser.Client.OnUpdates += handler;
+            _parserStorage.AddHandler(parserId, handler);
+            parser.IsParsingStarted = true;
+        }
+    }
+
+    public void StopParsing(Guid parserId)
+    {
+        if (_parserStorage.TryGetParser(parserId, out var parser) && parser.Client != null &&
+            _parserStorage.TryGetHandler(parserId, out var handler))
+        {
+            parser.Client.OnUpdates -= handler;
+            _parserStorage.RemoveHandler(parserId);
+            parser.IsParsingStarted = false;
+        }
+    }
+    public void DisposeParser(Guid parserId)
+    {
+        if (_parserStorage.TryGetParser(parserId, out var parser))
+        {
+            parser.DisposeData();
+            _parserStorage.TryRemoveParser(parserId);
+        }
+    }
 }

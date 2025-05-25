@@ -13,18 +13,22 @@ namespace MpParserAPI.Controllers
         }
         public override async Task OnConnectedAsync()
         {
-            var parserId = Context.GetHttpContext().Request.Query["parserId"];
+            var httpContext = Context.GetHttpContext();
+            var parserId = httpContext?.Request.Cookies["ParserId"];
+
             if (!string.IsNullOrEmpty(parserId))
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, parserId);
                 _logger.LogInformation($"Клиент {Context.ConnectionId} добавлен в группу {parserId}");
-            }       
+            }
+
             await base.OnConnectedAsync();
         }
 
         public override async Task OnDisconnectedAsync(Exception exception)
         {
-            var parserId = Context.GetHttpContext().Request.Query["parserId"];
+            var httpContext = Context.GetHttpContext();
+            var parserId = httpContext?.Request.Cookies["ParserId"];
             if (!string.IsNullOrEmpty(parserId))
             {
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, parserId);
