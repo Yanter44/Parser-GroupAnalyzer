@@ -172,14 +172,6 @@ namespace MpParserAPI.Services
             }
         }
 
-
-
-        public void ResetClient(Guid parserId)
-        {
-            _parserStorage.TryGetParser(parserId, out var parser);
-            parser.Client.Dispose();
-            parser.Client = new WTelegram.Client(what => Config(what, parserId));
-        }
         private string Config(string what, Guid parserId)
         {
             _parserStorage.TryGetParser(parserId, out var parser);
