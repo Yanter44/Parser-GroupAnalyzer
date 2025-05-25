@@ -16,6 +16,7 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Services.AddScoped<IParser, ParserService>();
+builder.Services.AddScoped<IParserAuthentificate, ParserAuthoriseService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddSingleton<IParserDataStorage, ParserDataStorage>();
 builder.Services.AddTransient<IGenerator, Generator>();

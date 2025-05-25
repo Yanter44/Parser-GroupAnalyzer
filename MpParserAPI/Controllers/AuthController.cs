@@ -11,14 +11,16 @@ namespace MpParserAPI.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IParser _parser;
-        public AuthController(IParser parser)
+        private readonly IParserAuthentificate _parserAuthentificate;
+        public AuthController(IParser parser, IParserAuthentificate parserAuthentificate)
         {
             _parser = parser;
+            _parserAuthentificate = parserAuthentificate;
         }
         [HttpPost("LoginAndStartParser")]
         public async Task<IActionResult> LoginAndStartParser([FromBody] AuthentificateDto logindto)
         {
-            var result = await _parser.LoginAndStartParser(logindto);
+            var result = await _parserAuthentificate.LoginAndStartParser(logindto);
 
             if (result.Data != null)
             {
@@ -45,7 +47,7 @@ namespace MpParserAPI.Controllers
                 return BadRequest("ParserId cookie отсутствует или некорректна.");
             }
 
-            var result = await _parser.SubmitVerificationCodeFromTelegram(parserId, modelDto.TelegramCode);
+            var result = await _parserAuthentificate.SubmitVerificationCodeFromTelegram(parserId, modelDto.TelegramCode);
 
             if (result.Success && result.Data?.Password != null)
             {
@@ -65,10 +67,10 @@ namespace MpParserAPI.Controllers
                 return BadRequest("ParserId отсутствует или некорректен.");
             }
 
-            if (modelDto.TwoFactorPassword == 0)
+            if (string.IsNullOrEmpty(modelDto.TwoFactorPassword))
                 return BadRequest("Код не должен быть пустым.");
 
-            var result = await _parser.SubmitTwoFactorPassword(parserId, modelDto.TwoFactorPassword);
+            var result = await _parserAuthentificate.SubmitTwoFactorPassword(parserId, modelDto.TwoFactorPassword);
 
             if (result.Success && result.Data?.Password != null)
             {
@@ -87,7 +89,7 @@ namespace MpParserAPI.Controllers
         [HttpPost("EnterToSessionByKeyAndPassword")]
         public async Task<IActionResult> EnterToSessionByKeyAndPassword([FromBody] EnterToParserSessionByKeyAndPasswordDto? model)
         {
-            var result = await _parser.EnterToSessionByKeyAndPassword(model.ParserId, model.ParserPassword);
+            var result = await _parserAuthentificate.EnterToSessionByKeyAndPassword(model.ParserId, model.ParserPassword);
 
             if (!result.Success)
                 return BadRequest(result.Message);

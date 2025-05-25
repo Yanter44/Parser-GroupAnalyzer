@@ -2,7 +2,8 @@
 {
     public class TemporaryAuthData
     {
+        public string Phone { get; set; }
         public int? VerificationCode { get; set; }
-        public int? TwoFactorPassword { get; set; }
+        public string? TwoFactorPassword { get; set; }
     }
 }

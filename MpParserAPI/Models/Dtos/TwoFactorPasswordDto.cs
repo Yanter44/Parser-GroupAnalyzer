@@ -3,6 +3,6 @@
     public class TwoFactorPasswordDto
     {
        public Guid ParserId { get; set; }
-       public int TwoFactorPassword { get; set; }
+       public string TwoFactorPassword { get; set; }
     }
 }

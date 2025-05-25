@@ -10,9 +10,10 @@ namespace MpParserAPI.Services
         private readonly ConcurrentDictionary<Guid, ParserData> _parsers = new();
      
         private readonly ConcurrentDictionary<Guid, TemporaryAuthData> _temporaryauthData = new(); //parserId - tempAuthData
-        private readonly ConcurrentDictionary<Guid, WTelegram.Client> _tempClients = new(); //tempAuthId - wtelegram.Client
-
+      
         private readonly Dictionary<Guid, Func<IObject, Task>> _handlers = new();
+
+
         public void AddOrUpdateParser(Guid parserId, ParserData data)
         {
             _parsers[parserId] = data;
