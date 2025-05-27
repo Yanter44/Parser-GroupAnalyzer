@@ -20,18 +20,22 @@ namespace MpParserAPI.Controllers
         [HttpPost("LoginAndStartParser")]
         public async Task<IActionResult> LoginAndStartParser([FromBody] AuthentificateDto logindto)
         {
-            var result = await _parserAuthentificate.LoginAndStartParser(logindto);
+            if (Request.Cookies.ContainsKey("TempAuthId"))
+                Response.Cookies.Delete("TempAuthId");
+            
+            var result = await _parserAuthentificate.RequestLoginAsync(logindto.phone);
 
-            if (result.Data != null)
+            if (result.Success && result.Data != Guid.Empty)
             {
-                Response.Cookies.Append("ParserId", result.Data.ParserId.ToString(),
-                    new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Strict, Expires = DateTimeOffset.UtcNow.AddDays(7) });
+                var tempAuthId = result.Data.ToString();
 
-                if (result.Data.Password != null)
-                {
-                    Response.Cookies.Append("ParserPassword", result.Data.Password,
-                        new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Strict, Expires = DateTimeOffset.UtcNow.AddDays(7) });
-                }
+                Response.Cookies.Append("TempAuthId", tempAuthId,
+                    new CookieOptions
+                    {
+                        HttpOnly = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTimeOffset.UtcNow.AddMinutes(10)
+                    });
             }
             return result.Success ? Ok(result) : BadRequest(result);
         }
@@ -42,40 +46,69 @@ namespace MpParserAPI.Controllers
             if (modelDto.TelegramCode == 0)
                 return BadRequest("Код не должен быть пустым.");
 
-            if (!Request.Cookies.TryGetValue("ParserId", out var parserIdStr) || !Guid.TryParse(parserIdStr, out var parserId))
-            {
-                return BadRequest("ParserId cookie отсутствует или некорректна.");
-            }
+            if (!Request.Cookies.TryGetValue("TempAuthId", out var tempAuthIdStr) || !Guid.TryParse(tempAuthIdStr, out var tempAuthId))
+                return BadRequest("TempAuthId cookie отсутствует или некорректен.");
 
-            var result = await _parserAuthentificate.SubmitVerificationCodeFromTelegram(parserId, modelDto.TelegramCode);
+            var result = await _parserAuthentificate.SubmitVerificationCodeFromTelegram(tempAuthId, modelDto.TelegramCode);
 
-            if (result.Success && result.Data?.Password != null)
+            if (result.Success && result.Data != null)
             {
-                Response.Cookies.Append("ParserPassword", result.Data.Password,
-                    new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Strict, Expires = DateTimeOffset.UtcNow.AddDays(7) });
+                Response.Cookies.Delete("TempAuthId");
+
+                Response.Cookies.Append("ParserId", result.Data.ParserId.ToString(), new CookieOptions
+                {
+                    HttpOnly = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTimeOffset.UtcNow.AddDays(7)
+                });
+
+                if (!string.IsNullOrEmpty(result.Data.Password))
+                {
+                    Response.Cookies.Append("ParserPassword", result.Data.Password, new CookieOptions
+                    {
+                        HttpOnly = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTimeOffset.UtcNow.AddDays(7)
+                    });
+                }
             }
 
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
 
+
         [HttpPost("SendATwoFactorPassword")]
         public async Task<IActionResult> SendATwoFactorPassword([FromBody] TwoFactorPasswordDto modelDto)
         {
-            if (!Request.Cookies.TryGetValue("ParserId", out var parserIdString) || !Guid.TryParse(parserIdString, out var parserId))
-            {
-                return BadRequest("ParserId отсутствует или некорректен.");
-            }
-
             if (string.IsNullOrEmpty(modelDto.TwoFactorPassword))
-                return BadRequest("Код не должен быть пустым.");
+                return BadRequest("Пароль не должен быть пустым.");
 
-            var result = await _parserAuthentificate.SubmitTwoFactorPassword(parserId, modelDto.TwoFactorPassword);
+            if (!Request.Cookies.TryGetValue("TempAuthId", out var tempAuthIdStr) || !Guid.TryParse(tempAuthIdStr, out var tempAuthId))
+                return BadRequest("TempAuthId отсутствует или некорректен.");
 
-            if (result.Success && result.Data?.Password != null)
+            var result = await _parserAuthentificate.SubmitTwoFactorPassword(tempAuthId, modelDto.TwoFactorPassword);
+
+            if (result.Success && result.Data != null)
             {
-                Response.Cookies.Append("ParserPassword", result.Data.Password,
-                    new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Strict, Expires = DateTimeOffset.UtcNow.AddDays(7) });
+                Response.Cookies.Delete("TempAuthId");
+
+                Response.Cookies.Append("ParserId", result.Data.ParserId.ToString(), new CookieOptions
+                {
+                    HttpOnly = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTimeOffset.UtcNow.AddDays(7)
+                });
+
+                if (!string.IsNullOrEmpty(result.Data.Password))
+                {
+                    Response.Cookies.Append("ParserPassword", result.Data.Password, new CookieOptions
+                    {
+                        HttpOnly = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTimeOffset.UtcNow.AddDays(7)
+                    });
+                }
 
                 return Ok(result);
             }

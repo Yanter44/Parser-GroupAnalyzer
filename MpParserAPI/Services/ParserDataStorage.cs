@@ -2,6 +2,7 @@
 using MpParserAPI.Models;
 using System.Collections.Concurrent;
 using TL;
+using WTelegram;
 
 namespace MpParserAPI.Services
 {
@@ -10,10 +11,26 @@ namespace MpParserAPI.Services
         private readonly ConcurrentDictionary<Guid, ParserData> _parsers = new();
      
         private readonly ConcurrentDictionary<Guid, TemporaryAuthData> _temporaryauthData = new(); //parserId - tempAuthData
-      
+        private readonly ConcurrentDictionary<Guid, Client> _tempClients = new();
+
         private readonly Dictionary<Guid, Func<IObject, Task>> _handlers = new();
 
-
+        // ===== Работа с временной авторизацией =====
+        public void AddTempClient(Guid tempAuthId, Client client)
+        {
+            _tempClients[tempAuthId] = client;
+        }
+        public bool TryGetTempClient(Guid tempAuthId, out Client client)
+        {
+            return _tempClients.TryGetValue(tempAuthId, out client);
+        }
+        public void RemoveTempClient(Guid tempAuthId)
+        {
+            if (_tempClients.TryRemove(tempAuthId, out var client))
+            {
+                client.Dispose();
+            }
+        }
         public void AddOrUpdateParser(Guid parserId, ParserData data)
         {
             _parsers[parserId] = data;

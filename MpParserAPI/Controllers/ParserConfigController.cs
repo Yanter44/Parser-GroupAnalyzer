@@ -13,7 +13,7 @@ namespace MpParserAPI.Controllers
         private readonly ILogger<ParserConfigController> _logger;
         public ParserConfigController(IParser parser, ILogger<ParserConfigController> logger)
         {
-            _parser = parser; 
+            _parser = parser;
             _logger = logger;
         }
         [ParserAuthorize]
@@ -56,7 +56,7 @@ namespace MpParserAPI.Controllers
         public async Task<IActionResult> GetParserState()
         {
             var parserId = (Guid)HttpContext.Items["ParserId"];
-            var parserData = await _parser.GetParserState(parserId); 
+            var parserData = await _parser.GetParserState(parserId);
 
             if (parserData == null)
                 return NotFound("Парсер не найден");
@@ -91,6 +91,16 @@ namespace MpParserAPI.Controllers
                 return BadRequest(result.Message);
             }
         }
+        [ParserAuthorize]
+        [HttpPost("AddTimeParsing")]
+        public async Task<IActionResult> AddTimeParsing([FromBody] TimeParsingDto timeparsingDto)
+        {
+            if (timeparsingDto.Hours == 0 || timeparsingDto.Minutes == 0)
+                return BadRequest("Установите время парсинга");
+            var parserId = (Guid)HttpContext.Items["ParserId"];
+            var result = await _parser.
+        }
+
         [ParserAuthorize]
         [HttpPost("AddGroupsToParser")]
         public async Task<IActionResult> AddGroupsToParser([FromBody] GroupNamesDto dto)

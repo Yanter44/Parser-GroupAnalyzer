@@ -1,5 +1,6 @@
 ﻿using MpParserAPI.Models;
 using TL;
+using WTelegram;
 
 namespace MpParserAPI.Interfaces
 {
@@ -20,5 +21,8 @@ namespace MpParserAPI.Interfaces
         void AddHandler(Guid parserId, Func<IObject, Task> handler);
         bool TryGetHandler(Guid parserId, out Func<IObject, Task> handler);
         void RemoveHandler(Guid parserId);
+        void AddTempClient(Guid tempAuthId, Client client);
+        bool TryGetTempClient(Guid tempAuthId, out Client client);
+        void RemoveTempClient(Guid tempAuthId);
     }
 }

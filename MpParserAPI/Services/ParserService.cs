@@ -188,10 +188,6 @@ public class ParserService : IParser
         return OperationResult<object>.Ok("Группы успешно установлены.");
     }
 
-
-
-
-
     public async Task<OperationResult<object>> SetKeywordsFromText(Guid parserId, string text)
     {
         if (!_parserStorage.ContainsParser(parserId))
@@ -317,5 +313,10 @@ public class ParserService : IParser
             parser.DisposeData();
             _parserStorage.TryRemoveParser(parserId);
         }
+    }
+
+    public Task<OperationResult<object>> AddTimeParsing(Guid parserId, TimeParsingDto timeParsingDto)
+    {
+        throw new NotImplementedException();
     }
 }
