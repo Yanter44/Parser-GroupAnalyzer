@@ -12,10 +12,12 @@ namespace MpParserAPI.Services
      
         private readonly ConcurrentDictionary<Guid, TemporaryAuthData> _temporaryauthData = new(); //parserId - tempAuthData
         private readonly ConcurrentDictionary<Guid, Client> _tempClients = new();
-
         private readonly Dictionary<Guid, Func<IObject, Task>> _handlers = new();
 
-        // ===== Работа с временной авторизацией =====
+        public Client GetTempClient(Guid TempAuthId)
+        {
+            return _tempClients[TempAuthId];
+        }
         public void AddTempClient(Guid tempAuthId, Client client)
         {
             _tempClients[tempAuthId] = client;
@@ -90,7 +92,6 @@ namespace MpParserAPI.Services
         {
             if (_handlers.TryGetValue(parserId, out var handler))
             {
-                Console.WriteLine($"RemoveHandler: {parserId}, Hash: {handler.GetHashCode()}");
                 _handlers.Remove(parserId);
             }
         }

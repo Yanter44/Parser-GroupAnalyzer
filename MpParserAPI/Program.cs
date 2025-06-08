@@ -24,29 +24,44 @@ builder.Services.AddSignalR();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 //builder.WebHost.UseKestrel(options =>
 //{
 //    options.Listen(System.Net.IPAddress.Any, 9090);
+//});
+
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowFrontend", policy =>
+//    {
+//        policy
+//            .WithOrigins("https://resortlehi.ru") 
+//            .AllowCredentials()
+//            .AllowAnyHeader()
+//            .AllowAnyMethod();
+//    });
 //});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAllOrigins", policy =>
     {
-        policy.WithOrigins("http://localhost:8000") 
-          .AllowCredentials()               
+        policy.WithOrigins("http://localhost:8000")
+          .AllowCredentials()
           .AllowAnyHeader()
           .AllowAnyMethod();
     });
 });
+
 var app = builder.Build();
-app.MapHub<ParserHub>("/parserHub");
-
-app.UseCors("AllowAllOrigins");
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    app.UseSwagger(); 
-    app.UseSwaggerUI(); 
+    var db = scope.ServiceProvider.GetRequiredService<ParserDbContext>();
+    db.Database.Migrate();
 }
+app.MapHub<ParserHub>("/parserHub");
+app.UseRouting();
+//app.UseCors("AllowFrontend"); 
+app.UseCors("AllowAllOrigins");
+app.MapControllers(); 
 
-app.MapControllers();
 app.Run();

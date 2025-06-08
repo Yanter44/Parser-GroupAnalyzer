@@ -56,49 +56,64 @@ namespace MpParserAPI.Controllers
         public async Task<IActionResult> GetParserState()
         {
             var parserId = (Guid)HttpContext.Items["ParserId"];
+            _logger.LogInformation("GetParserState: старт для parserId={ParserId}", parserId);
+
             var parserData = await _parser.GetParserState(parserId);
+            _logger.LogInformation("GetParserState: _parser.GetParserState вернулось, data={ParserData}", parserData);
 
             if (parserData == null)
+            {
+                _logger.LogInformation("GetParserState: parserData == null, вернем NotFound");
                 return NotFound("Парсер не найден");
+            }
 
+            _logger.LogInformation("GetParserState: успешное выполнение, вернем Ok");
             return Ok(parserData);
         }
 
+
         [ParserAuthorize]
         [HttpPost("AddParserKeywords")]
-        public async Task<IActionResult> AddParserKeywords([FromBody] string keywords)
+        public async Task<IActionResult> AddParserKeywords([FromBody] List<string> keywords)
         {
-            _logger.LogInformation("AddParserKeywords вызван с ключевыми словами: {Keywords}", keywords);
+            _logger.LogInformation("AddParserKeywords вызван с ключевыми словами: {Keywords}", string.Join(", ", keywords));
 
-            if (string.IsNullOrWhiteSpace(keywords))
+            if (keywords == null)
             {
-                _logger.LogWarning("AddParserKeywords: Ключевые слова пусты ");
-                return BadRequest("Вы не ввели ключевые слова.");
+                _logger.LogWarning("AddParserKeywords: Ключевые слова не переданы (null)");
+                return BadRequest("Ключевые слова не переданы.");
             }
+
 
             var parserId = (Guid)HttpContext.Items["ParserId"];
 
-            var result = await _parser.SetKeywordsFromText(parserId, keywords);
+            var result = await _parser.SetKeywords(parserId, keywords); 
 
             if (result.Success)
             {
-                _logger.LogInformation("Ключевые слова успешно установлены для ParserId: {ParserId}", parserId);
+                _logger.LogInformation($"Ключевые слова успешно установлены для ParserId: {parserId}");
                 return Ok(result.Message);
             }
             else
             {
-                _logger.LogWarning("Не удалось установить ключевые слова для ParserId: {ParserId}. Message: {Message}", parserId, result.Message);
+                _logger.LogWarning($"Не удалось установить ключевые слова для ParserId: {parserId}. Message: {result.Message}");
                 return BadRequest(result.Message);
             }
         }
+
         [ParserAuthorize]
         [HttpPost("AddTimeParsing")]
         public async Task<IActionResult> AddTimeParsing([FromBody] TimeParsingDto timeparsingDto)
         {
-            if (timeparsingDto.Hours == 0 || timeparsingDto.Minutes == 0)
+            if (timeparsingDto.Hours == 0 && timeparsingDto.Minutes == 0)
                 return BadRequest("Установите время парсинга");
             var parserId = (Guid)HttpContext.Items["ParserId"];
-            var result = await _parser.
+            var result = await _parser.AddTimeParsing(parserId, timeparsingDto);
+            if (result.Success)
+            {
+                return Ok("Время парсинга успешно установлено");
+            }
+            else { return BadRequest("Не удалось установить время парсинга"); }
         }
 
         [ParserAuthorize]
@@ -107,17 +122,16 @@ namespace MpParserAPI.Controllers
         {
             _logger.LogInformation("AddGroupsToParser вызван с группами: {Groups}", dto?.GroupNames);
 
-            if (dto?.GroupNames == null || !dto.GroupNames.Any())
+            if (!dto.GroupNames.Any())
             {
-                _logger.LogWarning("AddGroupsToParser: список групп пустой");
-                return BadRequest("Список групп пустой. Попробуйте добавить название групп");
+                _logger.LogInformation("AddGroupsToParser: пришёл пустой список — очищаем группы");
             }
 
             var parserId = (Guid)HttpContext.Items["ParserId"];
 
             try
             {
-                await _parser.SetGroupsNamesForParser(parserId, dto.GroupNames);
+                await _parser.SetGroupsNames(parserId, dto.GroupNames);
                 _logger.LogInformation("Группы успешно добавлены для ParserId: {ParserId}", parserId);
                 return Ok("Группы успешно добавлены в парсер.");
             }

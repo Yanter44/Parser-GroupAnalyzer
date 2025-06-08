@@ -13,7 +13,11 @@ namespace MpParserAPI.Models
 
         public Client Client { get; set; } //TELEGRAM CLIENT
         public List<InputPeer> TargetGroups { get; set; }
+        public List<string> TargetGroupTitles { get; set; } = new();
+
         public TelegramAuthState AuthState { get; set; }
+        public Timer ParsingTimer { get; set; }
+        public TimeSpan? ParsingDelay { get; set; }
 
         public ParserData(Guid _parserId, string password,string phone)
         {
@@ -26,6 +30,7 @@ namespace MpParserAPI.Models
         public void DisposeData()
         {
             Client?.Dispose();
+            ParsingTimer?.Dispose();
             Client = null;
             Keywords = null;
             TargetGroups?.Clear();

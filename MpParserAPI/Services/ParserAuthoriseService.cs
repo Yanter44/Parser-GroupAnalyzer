@@ -35,6 +35,11 @@ namespace MpParserAPI.Services
 
             _parserStorage.AddOrUpdateTemporaryAuthData(tempAuthId, new TemporaryAuthData { Phone = phone });
 
+            if (_parserStorage.TryGetTempClient(tempAuthId, out var oldClient))
+            {
+                oldClient.Dispose();
+                _parserStorage.RemoveTempClient(tempAuthId);
+            }
 
             var tempClient = new Client(what => Config(what, tempAuthId, isTemp: true));
 

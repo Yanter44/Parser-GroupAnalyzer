@@ -9,11 +9,15 @@ namespace MpParserAPI.Common
     {
         public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
         {
+            var logger = context.HttpContext.RequestServices.GetService<ILogger<ParserAuthorizeAttribute>>();
             var request = context.HttpContext.Request;
-            var response = context.HttpContext.Response;
 
-            var parserService = context.HttpContext.RequestServices.GetService(typeof(IParser)) as IParser;
-            if (parserService == null)
+            IParser parserService;
+            try
+            {
+                parserService = context.HttpContext.RequestServices.GetRequiredService<IParser>();
+            }
+            catch (Exception ex)
             {
                 context.Result = new StatusCodeResult(500);
                 return;
@@ -34,13 +38,25 @@ namespace MpParserAPI.Common
                 return;
             }
 
-            var isValid = await parserService.IsParserAuthValid(parserId, password);
+            bool isValid;
+            try
+            {
+                isValid = await parserService.IsParserAuthValid(parserId, password);
+            }
+            catch (Exception ex)
+            {
+                context.Result = new StatusCodeResult(500);
+                return;
+            }
+
             if (!isValid)
             {
                 context.Result = new UnauthorizedResult();
                 return;
             }
+
             context.HttpContext.Items["ParserId"] = parserId;
+            
         }
     }
 }

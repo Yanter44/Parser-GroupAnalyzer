@@ -116,9 +116,16 @@ namespace MpParserAPI.Controllers
             return BadRequest(new { success = false, message = result.Message });
         }
 
+        [ParserAuthorize]
+        [HttpPost("TryEnterToSessionByCookie")]
+        public async Task<IActionResult> TryEnterToSessionByCookie()
+        {
 
-
-
+            var parserId = HttpContext.Items["ParserId"] as Guid?;
+            if (parserId == null)
+                return Unauthorized();
+            return Ok(new { success = true });
+        }
         [HttpPost("EnterToSessionByKeyAndPassword")]
         public async Task<IActionResult> EnterToSessionByKeyAndPassword([FromBody] EnterToParserSessionByKeyAndPasswordDto? model)
         {

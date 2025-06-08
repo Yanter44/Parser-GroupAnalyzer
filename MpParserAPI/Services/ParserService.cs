@@ -20,17 +20,20 @@ public class ParserService : IParser
     private readonly IDbContextFactory<ParserDbContext> _dbContextFactory;
     private readonly IParserDataStorage _parserStorage;
     private readonly IHubContext<ParserHub> _parserHubContext;
+    private readonly ILogger<ParserService> _logger;
     public ParserService(ICloudinaryService cloudinaryService,
                          IGenerator generator,
                          IDbContextFactory<ParserDbContext> dbContextFactory,
                          IParserDataStorage parserStorage,
-                         IHubContext<ParserHub> parserhubContext)
+                         IHubContext<ParserHub> parserhubContext,
+                         ILogger<ParserService> logger)
     {
         _cloudinaryService = cloudinaryService;
         _generatorService = generator;
         _dbContextFactory = dbContextFactory;
         _parserStorage = parserStorage;
         _parserHubContext = parserhubContext;
+        _logger = logger;
     }
 
     private async Task HandleUpdate(Guid parserId, IObject updateObj)
@@ -120,14 +123,14 @@ public class ParserService : IParser
                                         existingTelegramUser.ProfilePhotoId = userPhotoId; 
                                         database.TelegramUsers.Update(existingTelegramUser);
                                     }
+                                    await database.SaveChangesAsync();
 
                                     var parserlog = new ParserLogs
                                     {
                                         ParserId = parserId,
-                                        TelegramUser = existingTelegramUser,
+                                        TelegramUserId = existingTelegramUser.TelegramUserId,
                                         MessageText = msg.message
                                     };
-
 
                                     database.ParserLogsTable.Add(parserlog);
                                     await database.SaveChangesAsync();
@@ -155,17 +158,27 @@ public class ParserService : IParser
         }
     }
 
-    public async Task<OperationResult<object>> SetGroupsNamesForParser(Guid parserId, IEnumerable<string> groupNames)
+    public async Task<OperationResult<object>> SetGroupsNames(Guid parserId, IEnumerable<string> groupNames)
     {
         if (!_parserStorage.ContainsParser(parserId))
         {
             return OperationResult<object>.Fail($"Парсер с id {parserId} не найден.");
         }
-        _parserStorage.TryGetParser(parserId, out var parser);
-        var client = parser.Client;
 
+        _parserStorage.TryGetParser(parserId, out var parser);
+
+        if (groupNames == null || !groupNames.Any())
+        {
+            parser.TargetGroups.Clear();
+            parser.TargetGroupTitles.Clear();
+
+            return OperationResult<object>.Ok("Группы очищены.");
+        }
+
+        var client = parser.Client;
         var dialogs = await client.Messages_GetAllDialogs();
         var newGroups = new List<InputPeer>();
+        var groupTitles = new List<string>();
 
         foreach (var groupName in groupNames)
         {
@@ -173,38 +186,43 @@ public class ParserService : IParser
             if (group != null)
             {
                 newGroups.Add(group.ToInputPeer());
+                groupTitles.Add(group.Title);
             }
         }
 
-        if (_parserStorage.ContainsParser(parserId))
-        {
-            parser.TargetGroups.Clear();
-            parser.TargetGroups.AddRange(newGroups);
-        }
-        else
-        {
-            parser.TargetGroups = newGroups;
-        }
+        parser.TargetGroups.Clear();
+        parser.TargetGroups.AddRange(newGroups);
+
+        parser.TargetGroupTitles.Clear();
+        parser.TargetGroupTitles.AddRange(groupTitles);
+
         return OperationResult<object>.Ok("Группы успешно установлены.");
     }
 
-    public async Task<OperationResult<object>> SetKeywordsFromText(Guid parserId, string text)
+
+
+    public async Task<OperationResult<object>> SetKeywords(Guid parserId, List<string> keywordss)
     {
         if (!_parserStorage.ContainsParser(parserId))
             return OperationResult<object>.Fail($"Парсер с Id {parserId} не найден.");
 
         _parserStorage.TryGetParser(parserId, out var parser);
-        var keywords = text.Split(" ", StringSplitOptions.RemoveEmptyEntries)
-                           .Select(k => k.Trim().ToLower())
-                           .Where(k => !string.IsNullOrWhiteSpace(k))
-                           .ToArray();
 
-        if (keywords.Length == 0)
-            return OperationResult<object>.Fail("Не удалось извлечь ключевые слова из текста.");
+        if (keywordss == null || !keywordss.Any())
+        {
+            parser.Keywords = Array.Empty<string>();
+            return OperationResult<object>.Ok("Ключевые слова очищены.");
+        }
+
+        var keywords = keywordss
+                        .Select(k => k.Trim().ToLower())
+                        .Where(k => !string.IsNullOrWhiteSpace(k))
+                        .ToArray();
 
         parser.Keywords = keywords;
         return OperationResult<object>.Ok("Ключевые слова успешно установлены.");
     }
+
 
     public async Task<bool> IsParserAuthValid(Guid parserId, string password)
     {
@@ -265,7 +283,7 @@ public class ParserService : IParser
             })
             .ToListAsync();
 
-        var targetGroupsDisplay = parser.TargetGroups?.Select(g => g.ToString()).ToList() ?? new();
+
 
         var response = new GetParserStateResponceDto
         {
@@ -275,7 +293,7 @@ public class ParserService : IParser
                 Parserkeywords = parser.Keywords,
                 ProfileImageUrl = profileImageUrl,
                 ProfileNickName = profileNickName,
-                TargetGroups = targetGroupsDisplay,
+                TargetGroups = parser.TargetGroupTitles.ToArray() ?? Array.Empty<string>(),
                 ParserId = parser.Id, 
                 ParserPassword = parser.Password 
             },
@@ -289,12 +307,24 @@ public class ParserService : IParser
         if (_parserStorage.TryGetParser(parserId, out var parser) && parser.Client != null)
         {
             Func<IObject, Task> handler = async update => await HandleUpdate(parserId, update);
-
             parser.Client.OnUpdates += handler;
             _parserStorage.AddHandler(parserId, handler);
             parser.IsParsingStarted = true;
+
+            if (parser.ParsingDelay.HasValue)
+            {
+                parser.ParsingTimer = new Timer(_ =>
+                {
+                    StopParsing(parserId);
+                    _logger.LogInformation($"Парсинг автоматически остановлен по таймеру для {parserId}");
+                },
+                null,
+                parser.ParsingDelay.Value,
+                Timeout.InfiniteTimeSpan);
+            }
         }
     }
+
 
     public void StopParsing(Guid parserId)
     {
@@ -304,8 +334,15 @@ public class ParserService : IParser
             parser.Client.OnUpdates -= handler;
             _parserStorage.RemoveHandler(parserId);
             parser.IsParsingStarted = false;
+
+            parser.ParsingTimer?.Dispose();
+            parser.ParsingTimer = null;
+
+            parser.ParsingDelay = null;
+            _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ParsingIsStoped");
         }
     }
+
     public void DisposeParser(Guid parserId)
     {
         if (_parserStorage.TryGetParser(parserId, out var parser))
@@ -315,8 +352,23 @@ public class ParserService : IParser
         }
     }
 
-    public Task<OperationResult<object>> AddTimeParsing(Guid parserId, TimeParsingDto timeParsingDto)
+    public Task<OperationResult<object>> AddTimeParsing(Guid parserId, TimeParsingDto dto)
     {
-        throw new NotImplementedException();
+        if (!_parserStorage.TryGetParser(parserId, out var parser))
+            return Task.FromResult(OperationResult<object>.Fail($"Парсер с id {parserId} не найден."));
+
+        parser.ParsingTimer?.Dispose();
+        parser.ParsingTimer = null;
+
+        parser.ParsingDelay = null;
+
+        var newDelay = TimeSpan.FromHours(dto.Hours) + TimeSpan.FromMinutes(dto.Minutes);
+        if (newDelay > TimeSpan.Zero)
+            parser.ParsingDelay = newDelay;
+
+        return Task.FromResult(OperationResult<object>.Ok(
+            parser.ParsingDelay.HasValue
+                ? $"Время парсинга для парсера {parserId} настроено на {parser.ParsingDelay.Value.TotalMinutes} минут."
+                : "Таймер парсинга сброшен."));
     }
 }
