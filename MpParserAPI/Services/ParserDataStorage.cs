@@ -95,7 +95,32 @@ namespace MpParserAPI.Services
                 _handlers.Remove(parserId);
             }
         }
+        public bool TryGetTempClientByPhone(string phone, out Client client)
+        {
+            client = null;
 
+            var tempEntry = _temporaryauthData
+                .FirstOrDefault(kvp => kvp.Value.Phone == phone);
+
+            if (tempEntry.Key != Guid.Empty && _tempClients.TryGetValue(tempEntry.Key, out client))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public void RemoveTempClientByPhone(string phone)
+        {
+            var tempEntry = _temporaryauthData
+                .FirstOrDefault(kvp => kvp.Value.Phone == phone);
+
+            if (tempEntry.Key != Guid.Empty)
+            {
+                RemoveTempClient(tempEntry.Key); 
+                _temporaryauthData.TryRemove(tempEntry.Key, out _);
+            }
+        }
 
     }
 }

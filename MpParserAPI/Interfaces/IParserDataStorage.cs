@@ -1,4 +1,5 @@
-﻿using MpParserAPI.Models;
+﻿using System.Collections.Concurrent;
+using MpParserAPI.Models;
 using TL;
 using WTelegram;
 
@@ -24,5 +25,8 @@ namespace MpParserAPI.Interfaces
         void AddTempClient(Guid tempAuthId, Client client);
         bool TryGetTempClient(Guid tempAuthId, out Client client);
         void RemoveTempClient(Guid tempAuthId);
+
+        bool TryGetTempClientByPhone(string phone, out Client client);
+        void RemoveTempClientByPhone(string phone);
     }
 }

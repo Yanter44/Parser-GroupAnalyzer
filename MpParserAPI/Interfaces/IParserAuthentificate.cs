@@ -9,6 +9,7 @@ namespace MpParserAPI.Interfaces
         Task<OperationResult<ParserAuthResultDto>> SubmitVerificationCodeFromTelegram(Guid parserId, int verificationCode);
         Task<OperationResult<ParserAuthResultDto>> SubmitTwoFactorPassword(Guid parserId, string twofactorpassword);
         Task<OperationResult<ParserAuthResultDto>> EnterToSessionByKeyAndPassword(Guid parserId, string sessionPassword);
+        Task<OperationResult<bool>> ResendVerificationCode(Guid tempAuthId);
 
     }
 }

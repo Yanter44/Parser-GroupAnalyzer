@@ -10,6 +10,8 @@ namespace MpParserAPI.Interfaces
         Task<OperationResult<object>> SetGroupsNames(Guid parserId, IEnumerable<string> groupNames);
         Task<OperationResult<object>> AddTimeParsing(Guid parserId, TimeParsingDto timeParsingDto);
         Task <GetParserStateResponceDto> GetParserState(Guid parserId);
+        Task<OperationResult<object>> AddNewSpamMessage(Guid parserId, AddNewSpamMessageDto modelDto);
+        GetParsingRemainTimeResponceDto GetParserRemainTime(Guid parserId);
         void StartParsing(Guid parserId);
         void StopParsing(Guid parserId);
         void DisposeParser(Guid parserId);

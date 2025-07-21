@@ -14,6 +14,7 @@ namespace MpParserAPI.DbContext
 
         public DbSet<ParserLogs> ParserLogsTable { get; set; }
         public DbSet<TelegramUser> TelegramUsers { get; set; }
+        public DbSet<ParserStateTable> ParsersStates { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

@@ -11,14 +11,15 @@ namespace MpParserAPI.Models
         public string Phone { get; set; }
         public bool IsParsingStarted { get; set; }
 
-        public Client Client { get; set; } //TELEGRAM CLIENT
+        public WTelegram.Client Client { get; set; } //TELEGRAM CLIENT
         public List<InputPeer> TargetGroups { get; set; }
         public List<string> TargetGroupTitles { get; set; } = new();
 
         public TelegramAuthState AuthState { get; set; }
         public Timer ParsingTimer { get; set; }
+        public TimeSpan? TotalParsingMinutes { get; set; }
         public TimeSpan? ParsingDelay { get; set; }
-
+        public DateTime? ParsingStartedAt { get; set; }
         public ParserData(Guid _parserId, string password,string phone)
         {
             Id = _parserId;
@@ -37,5 +38,15 @@ namespace MpParserAPI.Models
             TargetGroups = null;
             AuthState = TelegramAuthState.None;
         }
+        public TimeSpan? GetRemainingParsingTime()
+        {
+            if (!ParsingStartedAt.HasValue || !ParsingDelay.HasValue)
+                return null;
+
+            var elapsed = DateTime.UtcNow - ParsingStartedAt.Value;
+            var remaining = ParsingDelay.Value - elapsed;
+            return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+        }
+
     }
 }

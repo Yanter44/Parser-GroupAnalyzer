@@ -1,6 +1,10 @@
 ﻿namespace MpParserAPI.Models.Dtos
 {
-    public class ParserStateDto
+    public class 
+        
+        
+        
+        Dto
     {
         public bool Initialized { get; set; }
         public bool HasLoginData { get; set; }

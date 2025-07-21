@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MpParserAPI.Common;
-using MpParserAPI.Controllers;
 using MpParserAPI.DbContext;
+using MpParserAPI.Enums;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models;
 using MpParserAPI.Models.Dtos;
+using TL;
 using WTelegram;
 
 namespace MpParserAPI.Services
@@ -16,7 +16,6 @@ namespace MpParserAPI.Services
         private readonly IGenerator _generatorService;
         private readonly IDbContextFactory<ParserDbContext> _dbContextFactory;
         private readonly IParserDataStorage _parserStorage;
-
         public ParserAuthoriseService(ICloudinaryService cloudinaryService,
                              IGenerator generator,
                              IDbContextFactory<ParserDbContext> dbContextFactory,
@@ -31,6 +30,11 @@ namespace MpParserAPI.Services
         }
         public async Task<OperationResult<Guid>> RequestLoginAsync(string phone)
         {
+            if (_parserStorage.TryGetTempClientByPhone(phone, out var existingClient))
+            {
+                existingClient.Dispose();
+                _parserStorage.RemoveTempClientByPhone(phone);
+            }
             var tempAuthId = Guid.NewGuid();
 
             _parserStorage.AddOrUpdateTemporaryAuthData(tempAuthId, new TemporaryAuthData { Phone = phone });
@@ -43,29 +47,22 @@ namespace MpParserAPI.Services
 
             var tempClient = new Client(what => Config(what, tempAuthId, isTemp: true));
 
-
             _parserStorage.AddTempClient(tempAuthId, tempClient);
 
             var loginResult = await tempClient.Login(phone);
-
             switch (loginResult)
             {
                 case "verification_code":
-                    return OperationResult<Guid>.Ok(tempAuthId, "Введите код из Telegram.");
-
+                    return OperationResult<Guid>.Ok(tempAuthId, ErrorCodes.NeedVerificationCode);
                 case "password":
-                    return OperationResult<Guid>.Ok(tempAuthId, "Нужен двухфакторный пароль.");
-
+                    return OperationResult<Guid>.Ok(tempAuthId, ErrorCodes.NeedTwoFactorPassword);
                 case null:
                     var finalizeResult = await FinalizeParserCreation(tempAuthId);
-
                     if (!finalizeResult.Success)
                         return OperationResult<Guid>.Fail(finalizeResult.Message);
 
                     var parserId = finalizeResult.Data.ParserId;
-
                     return OperationResult<Guid>.Ok(parserId, finalizeResult.Message);
-
                 default:
                     return OperationResult<Guid>.Fail("Неожиданный результат: " + loginResult);
             }
@@ -79,27 +76,69 @@ namespace MpParserAPI.Services
                 return OperationResult<ParserAuthResultDto>.Fail("Временная авторизация не найдена.");
 
             if (_parserStorage.TryGetTemporaryAuthData(tempAuthId, out var tempData))
-            {
-                tempData.VerificationCode = verificationCode;
-            }
+                tempData.VerificationCode = verificationCode;       
             else
-            {
                 return OperationResult<ParserAuthResultDto>.Fail("Данные временной авторизации не найдены.");
-            }
 
-            var result = await tempClient.Login(verificationCode.ToString());
+            try
+            {
+                var result = await tempClient.Login(verificationCode.ToString());
 
-            if (result == "password")
-            {
-                return OperationResult<ParserAuthResultDto>.Fail("Нужен двухфакторный пароль. Отправьте его через /Auth/SendATwoFactorPassword");
+                if (result == "password")
+                {
+                    return OperationResult<ParserAuthResultDto>.Fail(ErrorCodes.NeedTwoFactorPassword);
+                }
+                else if (result == null)
+                {
+                    return await FinalizeParserCreation(tempAuthId);
+                }
+                else
+                {
+                    return OperationResult<ParserAuthResultDto>.Fail("Неизвестный результат авторизации: " + result);
+                }
             }
-            else if (result == null)
+            catch (RpcException ex) when (ex.Code == 400 && ex.Message == "PHONE_CODE_INVALID")
             {
-                return await FinalizeParserCreation(tempAuthId);
+                tempClient.Reset(); 
+
+                tempData.VerificationCode = null;
+                _parserStorage.AddOrUpdateTemporaryAuthData(tempAuthId, tempData);
+                return OperationResult<ParserAuthResultDto>.Fail(ErrorCodes.InvalidVerificationCode);
             }
-            else
+            catch (RpcException ex) when (ex.Code == 420) 
             {
-                return OperationResult<ParserAuthResultDto>.Fail("Неизвестный результат авторизации: " + result);
+                var waitSeconds = int.Parse(ex.Message.Split('_').Last());
+                var waitTime = TimeSpan.FromSeconds(waitSeconds);
+
+                return OperationResult<ParserAuthResultDto>.Fail(
+                    $"Слишком много запросов. Повторите через {waitTime:mm\\:ss} минут");
+            }
+        }
+        public async Task<OperationResult<bool>> ResendVerificationCode(Guid tempAuthId)
+        {
+            if (!_parserStorage.TryGetTempClient(tempAuthId, out var client))
+                return OperationResult<bool>.Fail("Клиент не найден");
+
+            if (!_parserStorage.TryGetTemporaryAuthData(tempAuthId, out var tempData))
+                return OperationResult<bool>.Fail("Данные авторизации утеряны");
+
+            try
+            {
+                tempData.VerificationCode = null;
+                _parserStorage.AddOrUpdateTemporaryAuthData(tempAuthId, tempData);
+
+                client.Reset(); 
+
+                var loginResult = await client.Login(tempData.Phone);
+
+                if (loginResult == "verification_code")
+                    return OperationResult<bool>.Ok(true, "Новый код отправлен");
+
+                return OperationResult<bool>.Fail("Не удалось запросить код: " + loginResult);
+            }
+            catch (Exception ex)
+            {
+                return OperationResult<bool>.Fail("Ошибка: " + ex.Message);
             }
         }
 
@@ -164,7 +203,7 @@ namespace MpParserAPI.Services
             }
 
             var parser = new ParserData(parserId, password, phone);
-
+         
             _parserStorage.AddOrUpdateParser(parserId, parser);
 
             parser.Client = new Client(what => Config(what, parserId));
@@ -174,6 +213,21 @@ namespace MpParserAPI.Services
 
 
             _parserStorage.TryRemoveTemporaryAuthData(tempAuthId);
+
+            var newparserStateModel = new ParserStateTable()
+            {
+                ParserId = parserId,
+                Password = password,
+                Keywords = new string[] { },
+                Phone = phone,
+                SpamWords = new List<string>(),
+                TotalParsingMinutes = TimeSpan.FromHours(30),
+                TargetGroups = new List<GroupReference>()
+            };
+
+            using var database = await _dbContextFactory.CreateDbContextAsync();
+            database.ParsersStates.Add(newparserStateModel);
+            await database.SaveChangesAsync();
 
             return OperationResult<ParserAuthResultDto>.Ok(new ParserAuthResultDto
             {

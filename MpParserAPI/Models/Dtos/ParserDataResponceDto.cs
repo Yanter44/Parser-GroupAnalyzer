@@ -10,5 +10,9 @@
 
         public Guid ParserId { get; set; }          
         public string ParserPassword { get; set; }
+
+        public List<string> UserGroupsList { get; set; }
+        public string RemainingParsingTimeHoursMinutes { get; set; }
+
     }
 }

@@ -16,11 +16,14 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Services.AddScoped<IParser, ParserService>();
+builder.Services.AddScoped<INotify, NotifyService>();
 builder.Services.AddScoped<IParserAuthentificate, ParserAuthoriseService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddSingleton<IParserDataStorage, ParserDataStorage>();
+builder.Services.AddScoped<IRedis, RedisService>();
 builder.Services.AddTransient<IGenerator, Generator>();
 builder.Services.AddSignalR();
+builder.Services.AddHttpClient();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -35,7 +38,7 @@ builder.Services.AddSwaggerGen();
 //    options.AddPolicy("AllowFrontend", policy =>
 //    {
 //        policy
-//            .WithOrigins("https://resortlehi.ru") 
+//            .WithOrigins("https://resortlehi.ru")
 //            .AllowCredentials()
 //            .AllowAnyHeader()
 //            .AllowAnyMethod();
@@ -60,7 +63,7 @@ using (var scope = app.Services.CreateScope())
 }
 app.MapHub<ParserHub>("/parserHub");
 app.UseRouting();
-//app.UseCors("AllowFrontend"); 
+//pp.UseCors("AllowFrontend"); 
 app.UseCors("AllowAllOrigins");
 app.MapControllers(); 
 

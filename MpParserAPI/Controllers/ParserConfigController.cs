@@ -84,7 +84,6 @@ namespace MpParserAPI.Controllers
                 return BadRequest("Ключевые слова не переданы.");
             }
 
-
             var parserId = (Guid)HttpContext.Items["ParserId"];
 
             var result = await _parser.SetKeywords(parserId, keywords); 
@@ -141,7 +140,22 @@ namespace MpParserAPI.Controllers
                 return BadRequest($"Не удалось добавить группы. {ex.Message}");
             }
         }
-
+        [ParserAuthorize]
+        [HttpPost("GetParserRemainTime")]
+        public IActionResult GetParserRemainTime()
+        {
+            var parserId = (Guid)HttpContext.Items["ParserId"];
+            var result = _parser.GetParserRemainTime(parserId);
+            return Ok(result);
+        }
+        [ParserAuthorize]
+        [HttpPost("AddNewSpamMessage")]
+        public async Task<IActionResult> AddNewSpamMessage(AddNewSpamMessageDto messageDto)
+        {
+            var parserId = (Guid)HttpContext.Items["ParserId"];
+            var result = await _parser.AddNewSpamMessage(parserId, messageDto);
+            return Ok();
+        }
 
     }
 }

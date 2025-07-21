@@ -1,13 +1,15 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations;
 using MpParserAPI.Common;
 using MpParserAPI.Controllers;
 using MpParserAPI.DbContext;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models;
 using MpParserAPI.Models.Dtos;
-using MpParserAPI.Services;
-using System.Collections.Concurrent;
+using MpParserAPI.Utils;
+using StackExchange.Redis;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using TL;
 using WTelegram;
@@ -21,12 +23,18 @@ public class ParserService : IParser
     private readonly IParserDataStorage _parserStorage;
     private readonly IHubContext<ParserHub> _parserHubContext;
     private readonly ILogger<ParserService> _logger;
+    private readonly INotify _notificationService;
+    private readonly MpParserAPI.Interfaces.IRedis _redisService;
+
+    private static readonly TimeZoneInfo MoscowTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Russian Standard Time");
     public ParserService(ICloudinaryService cloudinaryService,
                          IGenerator generator,
                          IDbContextFactory<ParserDbContext> dbContextFactory,
                          IParserDataStorage parserStorage,
                          IHubContext<ParserHub> parserhubContext,
-                         ILogger<ParserService> logger)
+                         ILogger<ParserService> logger,
+                         INotify notificationService,
+                         MpParserAPI.Interfaces.IRedis redisService)
     {
         _cloudinaryService = cloudinaryService;
         _generatorService = generator;
@@ -34,15 +42,21 @@ public class ParserService : IParser
         _parserStorage = parserStorage;
         _parserHubContext = parserhubContext;
         _logger = logger;
+        _notificationService = notificationService;
+        _redisService = redisService;
     }
-
+    private static string FormatToMoscowTime(DateTime utcDateTime)
+    {
+        var moscowTime = TimeZoneInfo.ConvertTimeFromUtc(utcDateTime, MoscowTimeZone);
+        return moscowTime.ToString("HH:mm");
+    }
     private async Task HandleUpdate(Guid parserId, IObject updateObj)
     {
         if (!_parserStorage.ContainsParser(parserId))
             return;
 
         _parserStorage.TryGetParser(parserId, out var parser);
-      
+
         var parserData = parser;
 
         if (updateObj is UpdatesBase updates)
@@ -66,89 +80,123 @@ public class ParserService : IParser
 
                                 if (dialogs.users.TryGetValue(userId, out var user))
                                 {
-                                    var userPhotoId = user.photo?.photo_id;
-                                    await using var database = _dbContextFactory.CreateDbContext();
-                                    var existingTelegramUser = await database.TelegramUsers
-                                        .FirstOrDefaultAsync(x => x.TelegramUserId == userId);
+                                    if (!string.IsNullOrEmpty(user.username) && user.username.EndsWith("bot", StringComparison.OrdinalIgnoreCase))                                    
+                                        continue;
 
-                                    string imageUrl = null;
+                                    string groupTitle = "Неизвестная группа";
+                                    string groupUsername = "";
 
-                                    if (existingTelegramUser == null || existingTelegramUser.ProfilePhotoId != userPhotoId)
+                                    if (dialogs.chats.TryGetValue(msg.peer_id.ID, out var chatBase))
                                     {
-                                        if (user.photo != null)
+                                        switch (chatBase)
                                         {
-                                            await using var userProfileImageBytes = new MemoryStream();
-                                            await parserData.Client.DownloadProfilePhotoAsync(user, userProfileImageBytes, true, true);
-                                            userProfileImageBytes.Position = 0;
+                                            case Chat chat:
+                                                groupUsername = chat.MainUsername;
+                                                groupTitle = chat.title;
+                                                break;
+                                            case Channel channel:
+                                                groupUsername = channel.username;
+                                                groupTitle = channel.title;
+                                                break;
+                                        }
 
-                                            if (userProfileImageBytes.Length > 0)
+
+                                        var userPhotoId = user.photo?.photo_id;
+                                        await using var database = _dbContextFactory.CreateDbContext();
+                                        var existingTelegramUser = await database.TelegramUsers
+                                            .FirstOrDefaultAsync(x => x.TelegramUserId == userId);
+
+                                        string imageUrl = null;
+
+                                        if (existingTelegramUser == null || existingTelegramUser.ProfilePhotoId != userPhotoId)
+                                        {
+                                            if (user.photo != null)
                                             {
-                                                imageUrl = await _cloudinaryService.UploadImageAsync(userProfileImageBytes.ToArray());
+                                                await using var userProfileImageBytes = new MemoryStream();
+                                                await parserData.Client.DownloadProfilePhotoAsync(user, userProfileImageBytes, true, true);
+                                                userProfileImageBytes.Position = 0;
+
+                                                if (userProfileImageBytes.Length > 0)
+                                                {
+                                                    imageUrl = await _cloudinaryService.UploadImageAsync(userProfileImageBytes.ToArray());
+                                                }
+                                            }
+
+                                            if (string.IsNullOrEmpty(imageUrl))
+                                            {
+                                                imageUrl = "https://res.cloudinary.com/ddg6n36uq/image/upload/v1747355623/c31bd024-f78b-459b-b96a-438eeb186eeb.png";
                                             }
                                         }
+                                        else { imageUrl = existingTelegramUser.ProfileImageUrl; }
 
-                                        if (string.IsNullOrEmpty(imageUrl))
+                                        if (existingTelegramUser == null)
                                         {
-                                            imageUrl = "https://res.cloudinary.com/ddg6n36uq/image/upload/v1747355623/c31bd024-f78b-459b-b96a-438eeb186eeb.png";
+                                            existingTelegramUser = new TelegramUser
+                                            {
+                                                TelegramUserId = user.id,
+                                                FirstName = user.first_name ?? "Отсутствует",
+                                                LastName = user.last_name ?? "Отсутствует",
+                                                Username = user.username ?? "Отсутствует",
+                                                Phone = user.phone ?? "Отсутствует",
+                                                ProfileImageUrl = imageUrl,
+                                                ProfilePhotoId = userPhotoId
+                                            };
+                                            database.TelegramUsers.Add(existingTelegramUser);
                                         }
-                                    }
-                                    else { imageUrl = existingTelegramUser.ProfileImageUrl; }
-
-                                    if (existingTelegramUser == null)
-                                    {
-                                        existingTelegramUser = new TelegramUser
+                                        else
                                         {
-                                            TelegramUserId = user.id,
-                                            FirstName = user.first_name ?? "Отсутствует",
-                                            LastName = user.last_name ?? "Отсутствует",
-                                            Username = user.username ?? "Отсутствует",
-                                            Phone = user.phone ?? "Отсутствует",
-                                            ProfileImageUrl = imageUrl,
-                                            ProfilePhotoId = userPhotoId 
+                                            existingTelegramUser.FirstName = user.first_name ?? "Отсутствует";
+                                            existingTelegramUser.LastName = user.last_name ?? "Отсутствует";
+                                            existingTelegramUser.Username = user.username ?? "Отсутствует";
+                                            existingTelegramUser.Phone = user.phone ?? "Отсутствует";
+
+                                            if (!string.IsNullOrEmpty(imageUrl))
+                                            {
+                                                existingTelegramUser.ProfileImageUrl = imageUrl;
+                                            }
+
+                                            existingTelegramUser.ProfilePhotoId = userPhotoId;
+                                            database.TelegramUsers.Update(existingTelegramUser);
+                                        }
+                                        await database.SaveChangesAsync();
+
+                                        var parserlog = new ParserLogs
+                                        {
+                                            ParserId = parserId,
+                                            TelegramUserId = existingTelegramUser.TelegramUserId,
+                                            MessageText = msg.message,
                                         };
-                                        database.TelegramUsers.Add(existingTelegramUser);
-                                    }
-                                    else
-                                    {
-                                        existingTelegramUser.FirstName = user.first_name ?? "Отсутствует";
-                                        existingTelegramUser.LastName = user.last_name ?? "Отсутствует";
-                                        existingTelegramUser.Username = user.username ?? "Отсутствует";
-                                        existingTelegramUser.Phone = user.phone ?? "Отсутствует";
 
-                                        if (!string.IsNullOrEmpty(imageUrl))
+                                        database.ParserLogsTable.Add(parserlog);
+                                        await database.SaveChangesAsync();
+
+                                        string messageLink = null;
+                                        if (!string.IsNullOrEmpty(groupUsername))
                                         {
-                                            existingTelegramUser.ProfileImageUrl = imageUrl;
+                                            messageLink = $"https://t.me/{groupUsername}/{msg.id}";
                                         }
 
-                                        existingTelegramUser.ProfilePhotoId = userPhotoId; 
-                                        database.TelegramUsers.Update(existingTelegramUser);
+                                      //  await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"Пользователь: {existingTelegramUser.FirstName}\n\nСообщение: {msg.message}\n\nГруппа: {groupTitle}\nUsername: @{user.username}", messageLink);
+
+                                        var formattedTime = FormatToMoscowTime(parserlog.CreatedAt);
+
+                                        await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ReceiveMessage", new
+                                        {
+                                            ProfileImageUrl = imageUrl,
+                                            Name = user.first_name,
+                                            Username = user.username,
+                                            MessageText = msg.message,
+                                            MessageTime = formattedTime
+
+                                        });
+                                        Console.WriteLine("Сообщение из отслеживаемой группы:");
+                                        Console.WriteLine($"ID: {user.id}");
+                                        Console.WriteLine($"Имя: {user.first_name} {user.last_name}");
+                                        Console.WriteLine($"Никнейм: @{user.username}");
+                                        Console.WriteLine($"Телефон: {user.phone}");
+                                        Console.WriteLine($"Текст: {msg.message}");
+                                        Console.WriteLine(new string('-', 50));
                                     }
-                                    await database.SaveChangesAsync();
-
-                                    var parserlog = new ParserLogs
-                                    {
-                                        ParserId = parserId,
-                                        TelegramUserId = existingTelegramUser.TelegramUserId,
-                                        MessageText = msg.message
-                                    };
-
-                                    database.ParserLogsTable.Add(parserlog);
-                                    await database.SaveChangesAsync();
-
-                                    await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ReceiveMessage", new
-                                    {
-                                        ProfileImageUrl = imageUrl,
-                                        Name = user.first_name,
-                                        Username = user.username,
-                                        MessageText = msg.message
-                                    });
-                                    Console.WriteLine("Сообщение из отслеживаемой группы:");
-                                    Console.WriteLine($"ID: {user.id}");
-                                    Console.WriteLine($"Имя: {user.first_name} {user.last_name}");
-                                    Console.WriteLine($"Никнейм: @{user.username}");
-                                    Console.WriteLine($"Телефон: {user.phone}");
-                                    Console.WriteLine($"Текст: {msg.message}");
-                                    Console.WriteLine(new string('-', 50));
                                 }
                             }
                         }
@@ -157,7 +205,7 @@ public class ParserService : IParser
             }
         }
     }
-
+  
     public async Task<OperationResult<object>> SetGroupsNames(Guid parserId, IEnumerable<string> groupNames)
     {
         if (!_parserStorage.ContainsParser(parserId))
@@ -235,7 +283,7 @@ public class ParserService : IParser
         }
         return false;
     }
-
+   
     public async Task<GetParserStateResponceDto> GetParserState(Guid parserId)
     {
         if (!_parserStorage.TryGetParser(parserId, out var parser) || parser.Client == null)
@@ -270,20 +318,42 @@ public class ParserService : IParser
         {
             profileImageUrl = existingUser.ProfileImageUrl;
         }
+        var usergroupsList = new List<string>();
+
+        var gettedDataAboutUserGroups = await parser.Client.Messages_GetAllDialogs();
+
+        foreach (var chatEntry in gettedDataAboutUserGroups.chats)
+        {
+            var chat = chatEntry.Value;
+            string title = chat switch
+            {
+                Chat group => group.Title,
+                Channel channel when !channel.flags.HasFlag(Channel.Flags.broadcast) => channel.Title,
+                _ => null
+            };
+
+            if (title != null && !usergroupsList.Contains(title))
+                usergroupsList.Add(title);
+        }
+
 
         var parserLogsRaw = await db.ParserLogsTable
             .Where(x => x.ParserId == parserId)
             .Include(x => x.TelegramUser)
+            .OrderBy(x => x.CreatedAt)
             .Select(x => new ParserLogsResponceDto
             {
                 MessageText = x.MessageText,
                 FirstName = x.TelegramUser.FirstName,
                 Username = x.TelegramUser.Username,
-                ProfileImageUrl = x.TelegramUser.ProfileImageUrl
+                ProfileImageUrl = x.TelegramUser.ProfileImageUrl,
+                MessageTime = x.CreatedAt.ToLocalTime().ToString("HH:mm")
+
             })
             .ToListAsync();
 
 
+        var remainingTime = parser.GetRemainingParsingTime() ?? TimeSpan.Zero;
 
         var response = new GetParserStateResponceDto
         {
@@ -294,8 +364,10 @@ public class ParserService : IParser
                 ProfileImageUrl = profileImageUrl,
                 ProfileNickName = profileNickName,
                 TargetGroups = parser.TargetGroupTitles.ToArray() ?? Array.Empty<string>(),
-                ParserId = parser.Id, 
-                ParserPassword = parser.Password 
+                ParserId = parser.Id,
+                ParserPassword = parser.Password,
+                UserGroupsList = usergroupsList,
+                RemainingParsingTimeHoursMinutes = remainingTime.ToString(@"hh\:mm\:ss") ?? "00:00:00"
             },
             parserLogs = parserLogsRaw
         };
@@ -313,9 +385,10 @@ public class ParserService : IParser
 
             if (parser.ParsingDelay.HasValue)
             {
-                parser.ParsingTimer = new Timer(_ =>
+                parser.ParsingTimer = new Timer(async _ =>
                 {
                     StopParsing(parserId);
+                    await _notificationService.SendSimpleNotify(parserId, "Парсинг автоматически остановлен по таймеру");
                     _logger.LogInformation($"Парсинг автоматически остановлен по таймеру для {parserId}");
                 },
                 null,
@@ -360,15 +433,61 @@ public class ParserService : IParser
         parser.ParsingTimer?.Dispose();
         parser.ParsingTimer = null;
 
-        parser.ParsingDelay = null;
-
         var newDelay = TimeSpan.FromHours(dto.Hours) + TimeSpan.FromMinutes(dto.Minutes);
         if (newDelay > TimeSpan.Zero)
+        {
             parser.ParsingDelay = newDelay;
+            parser.ParsingStartedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            parser.ParsingDelay = null;
+            parser.ParsingStartedAt = null;
+        }
 
         return Task.FromResult(OperationResult<object>.Ok(
             parser.ParsingDelay.HasValue
                 ? $"Время парсинга для парсера {parserId} настроено на {parser.ParsingDelay.Value.TotalMinutes} минут."
                 : "Таймер парсинга сброшен."));
     }
+
+    public GetParsingRemainTimeResponceDto GetParserRemainTime(Guid parserId)
+    {
+        if (_parserStorage.TryGetParser(parserId, out var parser))
+        {
+            var remainingTime = parser.GetRemainingParsingTime() ?? TimeSpan.Zero;
+            return new GetParsingRemainTimeResponceDto()
+            {
+                RemainingParsingTimeHoursMinutes = remainingTime.ToString(@"hh\:mm\:ss") ?? "00:00:00"
+            };
+        }
+        return null;
+    }
+
+    public async Task<OperationResult<object>> AddNewSpamMessage(Guid parserId, AddNewSpamMessageDto modelDto)
+    {
+        if (!_parserStorage.TryGetParser(parserId, out var parser))
+            return OperationResult<object>.Fail("Не удалось найти parser");
+
+        await using var database = _dbContextFactory.CreateDbContext();
+        var existParser = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
+        if (existParser == null)
+            return OperationResult<object>.Fail("Не удалось найти существующий parser");
+
+        string hash = HashHelper.ComputeSha256Hash(modelDto.Message);
+        string redisKey = parserId.ToString();
+    
+        var alreadyExists = await _redisService.SetContainsAsync(redisKey, hash);
+        if (alreadyExists)
+            return OperationResult<object>.Fail("Сообщение уже есть в черном списке");
+
+        await _redisService.SetAddAsync(redisKey, hash);
+
+        existParser.SpamWords.Add(hash);
+        await database.SaveChangesAsync();
+
+        return OperationResult<object>.Ok("Сообщение успешно добавлено в черный список");
+    }
+
+
 }

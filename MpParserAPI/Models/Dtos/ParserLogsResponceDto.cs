@@ -6,5 +6,6 @@
         public string MessageText { get; set; }
         public string Username { get; set; }
         public string ProfileImageUrl { get; set; }
+        public string MessageTime { get; set; }
     }
 }
