@@ -12,9 +12,9 @@ namespace MpParserAPI.Interfaces
         Task <GetParserStateResponceDto> GetParserState(Guid parserId);
         Task<OperationResult<object>> AddNewSpamMessage(Guid parserId, AddNewSpamMessageDto modelDto);
         GetParsingRemainTimeResponceDto GetParserRemainTime(Guid parserId);
-        void StartParsing(Guid parserId);
-        void StopParsing(Guid parserId);
-        void DisposeParser(Guid parserId);
+        Task StartParsing(Guid parserId);
+        Task StopParsing(Guid parserId);
+        Task DisposeParser(Guid parserId);
 
     }
 }

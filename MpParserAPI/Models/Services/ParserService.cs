@@ -11,6 +11,7 @@ using MpParserAPI.Utils;
 using StackExchange.Redis;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using TL;
 using WTelegram;
 using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
@@ -159,7 +160,10 @@ public class ParserService : IParser
                                             database.TelegramUsers.Update(existingTelegramUser);
                                         }
                                         await database.SaveChangesAsync();
-
+                                        var msgConvertedToHash = HashHelper.ComputeSha256Hash(msg.message);
+                                        var isexistSpamMessageInRedis = await _redisService.SetContainsAsync(parserId.ToString(), msgConvertedToHash);
+                                        if (isexistSpamMessageInRedis) { return; }
+                                        
                                         var parserlog = new ParserLogs
                                         {
                                             ParserId = parserId,
@@ -226,6 +230,7 @@ public class ParserService : IParser
         var client = parser.Client;
         var dialogs = await client.Messages_GetAllDialogs();
         var newGroups = new List<InputPeer>();
+        var groupReferences = new List<GroupReference>();
         var groupTitles = new List<string>();
 
         foreach (var groupName in groupNames)
@@ -233,8 +238,19 @@ public class ParserService : IParser
             var group = dialogs.chats.Values.OfType<ChatBase>().FirstOrDefault(c => c.Title == groupName);
             if (group != null)
             {
-                newGroups.Add(group.ToInputPeer());
-                groupTitles.Add(group.Title);
+                var inputPeer = group.ToInputPeer();
+                if (inputPeer is InputPeerChannel inputPeerChannel)
+                {
+                    newGroups.Add(inputPeer);
+                    groupTitles.Add(group.Title);
+
+                    groupReferences.Add(new GroupReference
+                    {
+                        ChatId = inputPeerChannel.channel_id,
+                        AccessHash = inputPeerChannel.access_hash,
+                        Title = group.Title
+                    });
+                }
             }
         }
 
@@ -243,7 +259,24 @@ public class ParserService : IParser
 
         parser.TargetGroupTitles.Clear();
         parser.TargetGroupTitles.AddRange(groupTitles);
+        using var database = await _dbContextFactory.CreateDbContextAsync();
 
+        var existParser = await database.ParsersStates
+            .AsTracking()
+            .FirstOrDefaultAsync(x => x.ParserId == parserId);
+
+        if (existParser == null)
+        {
+            existParser = new ParserStateTable
+            {
+                ParserId = parserId,
+                TargetGroups = new List<GroupReference>()
+            };
+            database.ParsersStates.Add(existParser);
+        }
+
+        existParser.TargetGroups = groupReferences;
+        await database.SaveChangesAsync();
         return OperationResult<object>.Ok("Группы успешно установлены.");
     }
 
@@ -268,6 +301,13 @@ public class ParserService : IParser
                         .ToArray();
 
         parser.Keywords = keywords;
+        using var database = await _dbContextFactory.CreateDbContextAsync();
+        var existparser = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
+        if(existparser != null)
+        {
+            existparser.Keywords = keywords;
+        }
+        await database.SaveChangesAsync();
         return OperationResult<object>.Ok("Ключевые слова успешно установлены.");
     }
 
@@ -336,9 +376,14 @@ public class ParserService : IParser
                 usergroupsList.Add(title);
         }
 
+        var spamWords = await db.ParsersStates
+            .Where(x => x.ParserId == parserId)
+            .Select(x => x.SpamWords)
+            .FirstOrDefaultAsync();
 
         var parserLogsRaw = await db.ParserLogsTable
             .Where(x => x.ParserId == parserId)
+            .Where(x => spamWords == null || !spamWords.Any(sw => x.MessageText == sw))
             .Include(x => x.TelegramUser)
             .OrderBy(x => x.CreatedAt)
             .Select(x => new ParserLogsResponceDto
@@ -348,9 +393,9 @@ public class ParserService : IParser
                 Username = x.TelegramUser.Username,
                 ProfileImageUrl = x.TelegramUser.ProfileImageUrl,
                 MessageTime = x.CreatedAt.ToLocalTime().ToString("HH:mm")
-
             })
             .ToListAsync();
+
 
 
         var remainingTime = parser.GetRemainingParsingTime() ?? TimeSpan.Zero;
@@ -374,7 +419,7 @@ public class ParserService : IParser
 
         return response;
     }
-    public void StartParsing(Guid parserId)
+    public async Task StartParsing(Guid parserId)
     {
         if (_parserStorage.TryGetParser(parserId, out var parser) && parser.Client != null)
         {
@@ -387,7 +432,7 @@ public class ParserService : IParser
             {
                 parser.ParsingTimer = new Timer(async _ =>
                 {
-                    StopParsing(parserId);
+                    await StopParsing(parserId);
                     await _notificationService.SendSimpleNotify(parserId, "Парсинг автоматически остановлен по таймеру");
                     _logger.LogInformation($"Парсинг автоматически остановлен по таймеру для {parserId}");
                 },
@@ -395,11 +440,22 @@ public class ParserService : IParser
                 parser.ParsingDelay.Value,
                 Timeout.InfiniteTimeSpan);
             }
+            using var databse = await _dbContextFactory.CreateDbContextAsync();
+            var existparserProfile = databse.ParsersStates.FirstOrDefault(x => x.ParserId == parserId);
+            if(existparserProfile != null)
+            {
+               var spammessages =  existparserProfile.SpamWords.ToList();
+                foreach (var message in spammessages)
+                {
+                    await _redisService.SetAddAsync(parserId.ToString(), message);
+                }
+           
+            }
         }
     }
 
 
-    public void StopParsing(Guid parserId)
+    public async Task StopParsing(Guid parserId)
     {
         if (_parserStorage.TryGetParser(parserId, out var parser) && parser.Client != null &&
             _parserStorage.TryGetHandler(parserId, out var handler))
@@ -412,16 +468,18 @@ public class ParserService : IParser
             parser.ParsingTimer = null;
 
             parser.ParsingDelay = null;
-            _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ParsingIsStoped");
+            await _redisService.DeleteKeyAsync(parserId.ToString());
+            await  _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ParsingIsStoped");
         }
     }
 
-    public void DisposeParser(Guid parserId)
+    public async Task DisposeParser(Guid parserId)
     {
         if (_parserStorage.TryGetParser(parserId, out var parser))
         {
             parser.DisposeData();
             _parserStorage.TryRemoveParser(parserId);
+            await Task.CompletedTask;
         }
     }
 
@@ -474,16 +532,20 @@ public class ParserService : IParser
         if (existParser == null)
             return OperationResult<object>.Fail("Не удалось найти существующий parser");
 
-        string hash = HashHelper.ComputeSha256Hash(modelDto.Message);
-        string redisKey = parserId.ToString();
-    
-        var alreadyExists = await _redisService.SetContainsAsync(redisKey, hash);
-        if (alreadyExists)
+        if (existParser.SpamWords?.Contains(modelDto.Message) == true)
             return OperationResult<object>.Fail("Сообщение уже есть в черном списке");
 
+        existParser.SpamWords ??= new List<string>();
+
+        existParser.SpamWords.Add(modelDto.Message);
+
+        database.Entry(existParser).Property(x => x.SpamWords).IsModified = true;
+
+
+        string hash = HashHelper.ComputeSha256Hash(modelDto.Message);
+        string redisKey = parserId.ToString();
         await _redisService.SetAddAsync(redisKey, hash);
 
-        existParser.SpamWords.Add(hash);
         await database.SaveChangesAsync();
 
         return OperationResult<object>.Ok("Сообщение успешно добавлено в черный список");

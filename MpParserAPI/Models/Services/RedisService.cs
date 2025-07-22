@@ -36,5 +36,10 @@ namespace MpParserAPI.Services
         {
             return _database.SetRemoveAsync(key, value);
         }
+
+        public Task<bool> DeleteKeyAsync(string key)
+        {
+            return _database.KeyDeleteAsync(key);
+        }
     }
 }

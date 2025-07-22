@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MpParserAPI.Migrations
 {
     [DbContext(typeof(ParserDbContext))]
-    [Migration("20250513150226_InitialMigratePostgresSql")]
-    partial class InitialMigratePostgresSql
+    [Migration("20250721135515_InitialMigrate")]
+    partial class InitialMigrate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -33,15 +33,15 @@ namespace MpParserAPI.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<Guid>("ClientId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("MessageText")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<Guid>("ParserId")
+                        .HasColumnType("uuid");
 
                     b.Property<long>("TelegramUserId")
                         .HasColumnType("bigint");
@@ -51,6 +51,45 @@ namespace MpParserAPI.Migrations
                     b.HasIndex("TelegramUserId");
 
                     b.ToTable("ParserLogsTable");
+                });
+
+            modelBuilder.Entity("MpParserAPI.Models.ParserStateTable", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.PrimitiveCollection<string[]>("Keywords")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<Guid>("ParserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Password")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SpamWords")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("TargetGroups")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<TimeSpan?>("TotalParsingMinutes")
+                        .HasColumnType("interval");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ParsersStates");
                 });
 
             modelBuilder.Entity("MpParserAPI.Models.TelegramUser", b =>

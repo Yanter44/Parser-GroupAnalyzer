@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using MpParserAPI.Common;
 using MpParserAPI.Interfaces;
@@ -18,10 +19,10 @@ namespace MpParserAPI.Controllers
         }
         [ParserAuthorize]
         [HttpPost("StartParsing")]
-        public IActionResult StartParsing()
+        public async Task<IActionResult> StartParsing()
         {
             var parserId = (Guid)HttpContext.Items["ParserId"];
-            _parser.StartParsing(parserId);
+            await _parser.StartParsing(parserId);
             _logger.LogInformation("Парсер успешно запущен для ParserId: {ParserId}", parserId);
             return Ok("Парсинг успешно запущен.");
         }
@@ -154,7 +155,7 @@ namespace MpParserAPI.Controllers
         {
             var parserId = (Guid)HttpContext.Items["ParserId"];
             var result = await _parser.AddNewSpamMessage(parserId, messageDto);
-            return Ok();
+            return Ok(result);
         }
 
     }

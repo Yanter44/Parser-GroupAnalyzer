@@ -7,11 +7,30 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MpParserAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigratePostgresSql : Migration
+    public partial class InitialMigrate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "ParsersStates",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ParserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Password = table.Column<string>(type: "text", nullable: false),
+                    Keywords = table.Column<string[]>(type: "text[]", nullable: false),
+                    Phone = table.Column<string>(type: "text", nullable: false),
+                    TotalParsingMinutes = table.Column<TimeSpan>(type: "interval", nullable: true),
+                    SpamWords = table.Column<string>(type: "jsonb", nullable: false),
+                    TargetGroups = table.Column<string>(type: "jsonb", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ParsersStates", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "TelegramUsers",
                 columns: table => new
@@ -36,7 +55,7 @@ namespace MpParserAPI.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    ClientId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ParserId = table.Column<Guid>(type: "uuid", nullable: false),
                     TelegramUserId = table.Column<long>(type: "bigint", nullable: false),
                     MessageText = table.Column<string>(type: "text", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
@@ -63,6 +82,9 @@ namespace MpParserAPI.Migrations
         {
             migrationBuilder.DropTable(
                 name: "ParserLogsTable");
+
+            migrationBuilder.DropTable(
+                name: "ParsersStates");
 
             migrationBuilder.DropTable(
                 name: "TelegramUsers");

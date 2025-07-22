@@ -50,6 +50,45 @@ namespace MpParserAPI.Migrations
                     b.ToTable("ParserLogsTable");
                 });
 
+            modelBuilder.Entity("MpParserAPI.Models.ParserStateTable", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.PrimitiveCollection<string[]>("Keywords")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<Guid>("ParserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Password")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SpamWords")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("TargetGroups")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<TimeSpan?>("TotalParsingMinutes")
+                        .HasColumnType("interval");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ParsersStates");
+                });
+
             modelBuilder.Entity("MpParserAPI.Models.TelegramUser", b =>
                 {
                     b.Property<long>("TelegramUserId")
