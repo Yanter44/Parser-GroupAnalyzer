@@ -27,43 +27,52 @@ namespace MpParserAPI.Services
         {
             var httpClient = _httpClientFactory.CreateClient();
             var apikey = _configuration["SpaceProxy:ApiKey"];
-            var responce = await httpClient.GetAsync($"https://panel.spaceproxy.net/api/proxies/?api_key={apikey}");
-            responce.EnsureSuccessStatusCode();
+            var response = await httpClient.GetAsync($"https://panel.spaceproxy.net/api/proxies/?api_key={apikey}");
+            response.EnsureSuccessStatusCode();
 
-            var result = await responce.Content.ReadFromJsonAsync<SpaceProxyResponse>();
+            var result = await response.Content.ReadFromJsonAsync<SpaceProxyResponse>();
             var listproxies = result.Proxies;
-            var proxyAddressIp = ProxyAdress.Split(":")[0];
-            var proxyAddressPort = ProxyAdress.Split(":")[1];
+            var proxyAddressIp = ProxyAdress.Split(':')[0];
+            var proxyAddressPort = ProxyAdress.Split(':')[1];
+
+            if (!_parserDataStorage.TryGetParser(parserId, out var parser))
+                return false;
+
             foreach (var proxy in listproxies)
             {
-                if (ProxyServersAndParsersIds.TryGetValue(proxy.IpAddress, out _))
+                if (proxy.IpAddress.Equals(proxyAddressIp, StringComparison.OrdinalIgnoreCase) &&
+                    proxy.Socks5Port.ToString() == proxyAddressPort)
                 {
-                    continue;
+                    parser.ProxyAdress = proxy;
+                    return true;
                 }
-                else
-                {
-                    var resultt = ProxyServersAndParsersIds.TryAdd(proxy.IpAddress, parserId);
-                    if (resultt)
-                    {
-                        _parserDataStorage.TryGetParser(parserId, out var parser);
-                        if (parser != null)
-                        {
-                            return true;
-                        }
-                    }
-                }
-
             }
             return false;
         }
+
         public async Task<bool> ReconnectWithNewProxy(Guid parserId, ProxyInfo proxy)
         {
             if (!_parserDataStorage.TryGetParser(parserId, out var parser))
                 return false;
+
+            var oldProxy = parser.ProxyAdress;
+            var oldProxyIp = oldProxy?.IpAddress;
+
             try
             {
-                parser.DisposeData();
+                if (!string.IsNullOrEmpty(oldProxyIp))
+                {
+                    ProxyServersAndParsersIds.TryRemove(oldProxyIp, out _);
+                }
 
+                ProxyServersAndParsersIds.AddOrUpdate(
+                    proxy.IpAddress,
+                    parserId,
+                    (key, oldValue) => parserId);
+
+                parser.ProxyAdress = proxy;
+
+                parser.DisposeData();
                 parser.Client = new Client(what =>
                 {
                     if (what == "session_pathname")
@@ -89,29 +98,40 @@ namespace MpParserAPI.Services
                 };
 
                 await parser.Client.LoginUserIfNeeded();
-
                 parser.AuthState = TelegramAuthState.Authorized;
 
-                ProxyServersAndParsersIds.TryRemove(parser.ProxyAdress.IpAddress, out _);
-                parser.ProxyAdress = proxy;
-
-                ProxyServersAndParsersIds.TryAdd(parser.ProxyAdress.IpAddress, parserId);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Ошибка при переподключении парсера {parserId} с новым прокси: {ex.Message}");
+                _logger.LogError($"Ошибка при переподключении парсера {parserId}: {ex.Message}");
+
+                if (parser.ProxyAdress != null && parser.ProxyAdress.IpAddress == proxy.IpAddress)
+                {
+                    ProxyServersAndParsersIds.TryRemove(proxy.IpAddress, out _);
+
+                    if (!string.IsNullOrEmpty(oldProxyIp))
+                    {
+                        ProxyServersAndParsersIds.TryAdd(oldProxyIp, parserId);
+                    }
+                    parser.ProxyAdress = oldProxy;
+                }
+
                 return false;
             }
         }
 
-        public async Task<ProxyInfo> GetAvailableProxyByProxyAdress(string proxyAddress)
+        public async Task<ProxyInfo> GetAvailableProxyByProxyAdress(string proxyAddress, Guid parserId)
         {
             if (string.IsNullOrWhiteSpace(proxyAddress))
                 return null;
 
-            var proxyAddressIp = proxyAddress.Split(":")[0];
-            var proxyAddressPort = int.Parse(proxyAddress.Split(":")[1]);
+            var parts = proxyAddress.Split(':');
+            if (parts.Length < 2) return null;
+
+            var proxyAddressIp = parts[0];
+            int proxyAddressPort;
+            if (!int.TryParse(parts[1], out proxyAddressPort)) return null;
 
             var httpClient = _httpClientFactory.CreateClient();
             var apiKey = _configuration["SpaceProxy:ApiKey"];
@@ -123,17 +143,20 @@ namespace MpParserAPI.Services
             foreach (var proxy in result.Proxies)
             {
                 if (proxy.IpAddress.Equals(proxyAddressIp, StringComparison.OrdinalIgnoreCase) &&
-                    (proxyAddressPort == null || proxy.Socks5Port == proxyAddressPort))
+                    proxy.Socks5Port == proxyAddressPort)
                 {
-                    if (!ProxyServersAndParsersIds.ContainsKey(proxy.IpAddress))
+     
+                    if (!ProxyServersAndParsersIds.TryGetValue(proxy.IpAddress, out var currentParserId) ||
+                        currentParserId == parserId)
                     {
                         return proxy;
                     }
                 }
             }
-
             return null;
         }
+
+
 
 
 

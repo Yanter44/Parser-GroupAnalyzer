@@ -52,13 +52,21 @@ namespace MpParserAPI.Admin
         [HttpPost("SetNewProxy")]
         public async Task<IActionResult> SetNewProxy(SetNewProxyDto model)
         {
-            var result = await _spaceproxyService.SetNewProxy(Guid.Parse(model.ParserId), model.ProxyAdress);
+            var parserId = Guid.Parse(model.ParserId);
+            var result = await _spaceproxyService.SetNewProxy(parserId, model.ProxyAdress);
             if (result)
             {
-                var availableproxy = await _spaceproxyService.GetAvailableProxyByProxyAdress(model.ProxyAdress);
+                // Передаем parserId в метод
+                var availableproxy = await _spaceproxyService.GetAvailableProxyByProxyAdress(
+                    model.ProxyAdress,
+                    parserId);
+
                 if (availableproxy != null)
                 {
-                    var reconnectedresult = await _spaceproxyService.ReconnectWithNewProxy(Guid.Parse(model.ParserId), availableproxy);
+                    var reconnectedresult = await _spaceproxyService.ReconnectWithNewProxy(
+                        parserId,
+                        availableproxy);
+
                     if (reconnectedresult)
                         return Ok();
                 }

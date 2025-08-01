@@ -8,7 +8,7 @@ namespace MpParserAPI.Interfaces
         Task<ProxyInfo> GetAndSetAvailableProxy(Guid parserId);
         Task<bool> SetNewProxy(Guid parserId, string ProxyAdress);
         Task<ProxyInfo> GetAvailableProxy();
-        Task<ProxyInfo> GetAvailableProxyByProxyAdress(string proxyAddress);
+        Task<ProxyInfo> GetAvailableProxyByProxyAdress(string proxyAddress, Guid parserId);
         Task<bool> ReconnectWithNewProxy(Guid parserId, ProxyInfo proxy);
     }
 }
