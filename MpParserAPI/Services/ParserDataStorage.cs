@@ -37,7 +37,7 @@ namespace MpParserAPI.Services
         {
             _parsers[parserId] = data;
         }
-        public ICollection<ParserData> GetAllParsers()
+        public async Task<ICollection<ParserData>> GetAllParsers()
         {
             return _parsers.Values;
         }

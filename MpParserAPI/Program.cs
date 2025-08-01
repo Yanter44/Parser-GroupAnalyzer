@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using MpParserAPI.Controllers;
 using MpParserAPI.DbContext;
+using MpParserAPI.HostedServices;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Services;
+using MpParserAPI.Services.Admin;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,11 +24,14 @@ builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddSingleton<IParserDataStorage, ParserDataStorage>();
 builder.Services.AddScoped<IRedis, RedisService>();
 builder.Services.AddTransient<IGenerator, Generator>();
+builder.Services.AddScoped<IAdmin, AdminService>();
+builder.Services.AddScoped<ISpaceProxy, SpaceProxyService>();
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHostedService<ParsersHostedService>();
 
 //builder.WebHost.UseKestrel(options =>
 //{
@@ -56,9 +61,15 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ParserDbContext>();
+    var parserService = scope.ServiceProvider.GetRequiredService<IParserAuthentificate>();
+    var result =  await parserService.LoadAllParsersFromDbAsync();
+    if (!result)
+        return;
+   
     db.Database.Migrate();
 }
 app.MapHub<ParserHub>("/parserHub");

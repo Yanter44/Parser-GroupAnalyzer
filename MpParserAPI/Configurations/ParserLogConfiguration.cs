@@ -1,8 +1,6 @@
-﻿using System.Reflection.Emit;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MpParserAPI.Models;
-using WTelegram;
 
 namespace MpParserAPI.Configurations
 {

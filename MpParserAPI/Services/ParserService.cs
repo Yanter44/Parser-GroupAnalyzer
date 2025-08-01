@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Migrations;
 using MpParserAPI.Common;
 using MpParserAPI.Controllers;
 using MpParserAPI.DbContext;
@@ -8,13 +8,7 @@ using MpParserAPI.Interfaces;
 using MpParserAPI.Models;
 using MpParserAPI.Models.Dtos;
 using MpParserAPI.Utils;
-using StackExchange.Redis;
-using System.Net.Http;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using TL;
-using WTelegram;
-using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 
 public class ParserService : IParser
 {
@@ -46,6 +40,8 @@ public class ParserService : IParser
         _notificationService = notificationService;
         _redisService = redisService;
     }
+
+
     private static string FormatToMoscowTime(DateTime utcDateTime)
     {
         var moscowTime = TimeZoneInfo.ConvertTimeFromUtc(utcDateTime, MoscowTimeZone);
@@ -392,11 +388,11 @@ public class ParserService : IParser
                 FirstName = x.TelegramUser.FirstName,
                 Username = x.TelegramUser.Username,
                 ProfileImageUrl = x.TelegramUser.ProfileImageUrl,
-                MessageTime = x.CreatedAt.ToLocalTime().ToString("HH:mm")
+                MessageTime = x.CreatedAt.ToLocalTime().ToString("HH:mm"),
+
+
             })
             .ToListAsync();
-
-
 
         var remainingTime = parser.GetRemainingParsingTime() ?? TimeSpan.Zero;
 
@@ -412,7 +408,8 @@ public class ParserService : IParser
                 ParserId = parser.Id,
                 ParserPassword = parser.Password,
                 UserGroupsList = usergroupsList,
-                RemainingParsingTimeHoursMinutes = remainingTime.ToString(@"hh\:mm\:ss") ?? "00:00:00"
+                RemainingParsingTimeHoursMinutes = remainingTime.ToString(@"hh\:mm\:ss") ?? "00:00:00",
+                TotalParsingMinutes = parser.TotalParsingMinutes?.ToString(@"hh\:mm\:ss") ?? "00:00:00"
             },
             parserLogs = parserLogsRaw
         };
@@ -427,13 +424,14 @@ public class ParserService : IParser
             parser.Client.OnUpdates += handler;
             _parserStorage.AddHandler(parserId, handler);
             parser.IsParsingStarted = true;
-
+            parser.ParsingStartedAt = DateTime.UtcNow;
+         
             if (parser.ParsingDelay.HasValue)
             {
                 parser.ParsingTimer = new Timer(async _ =>
                 {
                     await StopParsing(parserId);
-                    await _notificationService.SendSimpleNotify(parserId, "Парсинг автоматически остановлен по таймеру");
+              //      await _notificationService.SendSimpleNotify(parserId, "Парсинг автоматически остановлен по таймеру");
                     _logger.LogInformation($"Парсинг автоматически остановлен по таймеру для {parserId}");
                 },
                 null,
@@ -454,24 +452,44 @@ public class ParserService : IParser
         }
     }
 
-
     public async Task StopParsing(Guid parserId)
     {
-        if (_parserStorage.TryGetParser(parserId, out var parser) && parser.Client != null &&
+        if (_parserStorage.TryGetParser(parserId, out var parser) &&
+            parser.Client != null &&
             _parserStorage.TryGetHandler(parserId, out var handler))
         {
             parser.Client.OnUpdates -= handler;
             _parserStorage.RemoveHandler(parserId);
             parser.IsParsingStarted = false;
 
+            if (parser.ParsingStartedAt.HasValue)
+            {
+                var elapsed = DateTime.UtcNow - parser.ParsingStartedAt.Value;
+                if (elapsed > TimeSpan.Zero)
+                {
+                    parser.TotalParsingMinutes ??= TimeSpan.Zero;
+                    parser.TotalParsingMinutes -= elapsed;
+                }
+            }
+
+            parser.ParsingStartedAt = null;
             parser.ParsingTimer?.Dispose();
             parser.ParsingTimer = null;
-
             parser.ParsingDelay = null;
+
+            using var database = await _dbContextFactory.CreateDbContextAsync();
+            var parserState = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
+            if (parserState != null)
+            {
+                parserState.TotalParsingMinutes = parser.TotalParsingMinutes;
+                await database.SaveChangesAsync();
+            }
+
             await _redisService.DeleteKeyAsync(parserId.ToString());
-            await  _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ParsingIsStoped");
+            await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ParsingIsStoped");
         }
     }
+
 
     public async Task DisposeParser(Guid parserId)
     {
@@ -488,10 +506,16 @@ public class ParserService : IParser
         if (!_parserStorage.TryGetParser(parserId, out var parser))
             return Task.FromResult(OperationResult<object>.Fail($"Парсер с id {parserId} не найден."));
 
+        var newDelay = TimeSpan.FromHours(dto.Hours) + TimeSpan.FromMinutes(dto.Minutes);
+
+        if (parser.TotalParsingMinutes.HasValue && newDelay > parser.TotalParsingMinutes.Value)
+        {
+            return Task.FromResult(OperationResult<object>.Fail(
+                $"Нельзя установить время больше чем общее время парсинга. Допустимо максимум: {parser.TotalParsingMinutes.Value.TotalMinutes} минут."));
+        }
         parser.ParsingTimer?.Dispose();
         parser.ParsingTimer = null;
 
-        var newDelay = TimeSpan.FromHours(dto.Hours) + TimeSpan.FromMinutes(dto.Minutes);
         if (newDelay > TimeSpan.Zero)
         {
             parser.ParsingDelay = newDelay;
@@ -508,6 +532,7 @@ public class ParserService : IParser
                 ? $"Время парсинга для парсера {parserId} настроено на {parser.ParsingDelay.Value.TotalMinutes} минут."
                 : "Таймер парсинга сброшен."));
     }
+
 
     public GetParsingRemainTimeResponceDto GetParserRemainTime(Guid parserId)
     {
@@ -540,7 +565,6 @@ public class ParserService : IParser
         existParser.SpamWords.Add(modelDto.Message);
 
         database.Entry(existParser).Property(x => x.SpamWords).IsModified = true;
-
 
         string hash = HashHelper.ComputeSha256Hash(modelDto.Message);
         string redisKey = parserId.ToString();

@@ -1,5 +1,5 @@
-﻿using TL;
-using WTelegram;
+﻿using MpParserAPI.Models.SpaceProxyDto;
+using TL;
 
 namespace MpParserAPI.Models
 {
@@ -14,7 +14,7 @@ namespace MpParserAPI.Models
         public WTelegram.Client Client { get; set; } //TELEGRAM CLIENT
         public List<InputPeer> TargetGroups { get; set; }
         public List<string> TargetGroupTitles { get; set; } = new();
-
+        public ProxyInfo ProxyAdress { get; set; }
         public TelegramAuthState AuthState { get; set; }
         public Timer ParsingTimer { get; set; }
         public TimeSpan? TotalParsingMinutes { get; set; }

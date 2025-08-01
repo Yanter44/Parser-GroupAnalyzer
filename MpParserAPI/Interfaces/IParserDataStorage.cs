@@ -7,7 +7,7 @@ namespace MpParserAPI.Interfaces
 {
     public interface IParserDataStorage
     {
-        public ICollection<ParserData> GetAllParsers();
+        Task<ICollection<ParserData>> GetAllParsers();
         void AddOrUpdateParser(Guid parserId, ParserData data);
         bool TryGetParser(Guid parserId, out ParserData data);
         ParserData GetParser(Guid parserId);

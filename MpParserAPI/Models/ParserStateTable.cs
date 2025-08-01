@@ -12,6 +12,7 @@ namespace MpParserAPI.Models
         public TimeSpan? TotalParsingMinutes { get; set; }
         [Column(TypeName = "jsonb")]
         public List<string> SpamWords { get; set; }
+
         [Column(TypeName = "jsonb")]
         public List<GroupReference> TargetGroups { get; set; }
 

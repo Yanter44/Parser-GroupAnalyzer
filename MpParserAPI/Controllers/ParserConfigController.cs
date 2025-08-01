@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using MpParserAPI.Common;
 using MpParserAPI.Interfaces;
@@ -107,14 +106,20 @@ namespace MpParserAPI.Controllers
         {
             if (timeparsingDto.Hours == 0 && timeparsingDto.Minutes == 0)
                 return BadRequest("Установите время парсинга");
+
             var parserId = (Guid)HttpContext.Items["ParserId"];
             var result = await _parser.AddTimeParsing(parserId, timeparsingDto);
+
             if (result.Success)
             {
                 return Ok("Время парсинга успешно установлено");
             }
-            else { return BadRequest("Не удалось установить время парсинга"); }
+            else
+            {
+                return BadRequest(result.Message);
+            }
         }
+
 
         [ParserAuthorize]
         [HttpPost("AddGroupsToParser")]

@@ -1,10 +1,14 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Numerics;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using MpParserAPI.Common;
 using MpParserAPI.DbContext;
 using MpParserAPI.Enums;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models;
 using MpParserAPI.Models.Dtos;
+using Starksoft.Net.Proxy;
 using TL;
 using WTelegram;
 
@@ -16,18 +20,92 @@ namespace MpParserAPI.Services
         private readonly IGenerator _generatorService;
         private readonly IDbContextFactory<ParserDbContext> _dbContextFactory;
         private readonly IParserDataStorage _parserStorage;
+        private readonly ILogger<ParserAuthoriseService> _logger;
+        private readonly ISpaceProxy _spaceProxyService;
         public ParserAuthoriseService(ICloudinaryService cloudinaryService,
                              IGenerator generator,
                              IDbContextFactory<ParserDbContext> dbContextFactory,
-                             IParserDataStorage parserStorage
+                             IParserDataStorage parserStorage,
+                             ILogger<ParserAuthoriseService> logger,
+                             ISpaceProxy spaceProxyService
                             )
         {
             _cloudinaryService = cloudinaryService;
             _generatorService = generator;
             _dbContextFactory = dbContextFactory;
             _parserStorage = parserStorage;
+            _logger = logger;
+            _spaceProxyService = spaceProxyService;
     
         }
+        public async Task<bool> LoadAllParsersFromDbAsync()
+        {
+            try
+            {
+                using var database = await _dbContextFactory.CreateDbContextAsync();
+                var allParserStatesInDb = await database.ParsersStates.ToListAsync();
+
+                foreach (var parserState in allParserStatesInDb)
+                {
+                    var parserData = new ParserData(parserState.ParserId, parserState.Password, parserState.Phone)
+                    {
+                        Keywords = parserState.Keywords,
+                        TargetGroups = parserState.TargetGroups
+                                            .Select(g => new InputPeerChannel(g.ChatId, g.AccessHash))
+                                            .Cast<InputPeer>()
+                                            .ToList(),
+                        TargetGroupTitles = parserState.TargetGroups.Select(x => x.Title).ToList(),
+                        IsParsingStarted = false,
+                        TotalParsingMinutes = parserState.TotalParsingMinutes,
+                    };
+
+                    _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
+
+                    parserData.Client = new Client(what =>
+                    {
+                        if (what == "session_pathname")
+                            return GetSessionPath(parserState.Phone, isTemp: false);
+
+                        return what switch
+                        {
+                            "api_id" => "22262339",
+                            "api_hash" => "fc15371db5ea0ba274b93faf572aec6b",
+                            "phone_number" => parserState.Phone,
+                            _ => null
+                        };
+                    });
+                    var gettedAvailableProxy = await _spaceProxyService.GetAndSetAvailableProxy(parserData.Id);
+                    if(gettedAvailableProxy != null)
+                    {
+                        parserData.Client.TcpHandler = async (address, port) =>
+                        {
+
+                            var proxy = new Leaf.xNet.Socks5ProxyClient(gettedAvailableProxy.IpAddress, gettedAvailableProxy.Socks5Port)
+                            {
+                                Username = gettedAvailableProxy.Username,
+                                Password = gettedAvailableProxy.Password
+                            };
+                            return proxy.CreateConnection(address, port);
+                        };
+                    }
+                  
+                    Environment.SetEnvironmentVariable("WTG_LOG", "ALL");
+                    await parserData.Client.LoginUserIfNeeded();
+
+                    parserData.AuthState = TelegramAuthState.Authorized;
+
+                    _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Ошибка при загрузке парсеров из БД: {ex.Message}");
+                return false;
+            }
+        }
+
         public async Task<OperationResult<Guid>> RequestLoginAsync(string phone)
         {
             if (_parserStorage.TryGetTempClientByPhone(phone, out var existingClient))
@@ -175,7 +253,7 @@ namespace MpParserAPI.Services
             if (string.IsNullOrWhiteSpace(phone))
                 return OperationResult<ParserAuthResultDto>.Fail("Телефон не найден.");
 
-            if (IsPhoneAlreadyInUse(phone))
+            if ( await IsPhoneAlreadyInUse(phone))
                 return OperationResult<ParserAuthResultDto>.Fail("Этот аккаунт уже используется. Войдите в старую сессию или используйте другой аккаунт.");
 
             var parserId = Guid.NewGuid();
@@ -207,6 +285,20 @@ namespace MpParserAPI.Services
             _parserStorage.AddOrUpdateParser(parserId, parser);
 
             parser.Client = new Client(what => Config(what, parserId));
+
+            var gettedAvailableProxy = await _spaceProxyService.GetAndSetAvailableProxy(parser.Id);
+            if (gettedAvailableProxy != null)
+            {
+                parser.Client.TcpHandler = async (address, port) =>
+                {
+                    var proxy = new Leaf.xNet.Socks5ProxyClient(gettedAvailableProxy.IpAddress, gettedAvailableProxy.Socks5Port)
+                    {
+                        Username = gettedAvailableProxy.Username,
+                        Password = gettedAvailableProxy.Password
+                    };
+                    return proxy.CreateConnection(address, port);
+                };
+            }
             await parser.Client.LoginUserIfNeeded();
 
             parser.AuthState = TelegramAuthState.Authorized;
@@ -221,7 +313,7 @@ namespace MpParserAPI.Services
                 Keywords = new string[] { },
                 Phone = phone,
                 SpamWords = new List<string>(),
-                TotalParsingMinutes = TimeSpan.FromHours(30),
+                TotalParsingMinutes = TimeSpan.FromMinutes(30),
                 TargetGroups = new List<GroupReference>()
             };
 
@@ -240,26 +332,21 @@ namespace MpParserAPI.Services
         private string Config(string what, Guid id, bool isTemp = false)
         {
             var isParserId = _parserStorage.ContainsParser(id);
-            var phone = isParserId
-                ? (_parserStorage.TryGetParser(id, out var parser) ? parser.Phone : null)
-                : (_parserStorage.TryGetTemporaryAuthData(id, out var temp) ? temp.Phone : null);
 
-            if (what == "session_pathname")
-            {
-                return GetSessionPath(phone, isTemp);
-            }
+            _parserStorage.TryGetParser(id, out var parser);
+            _parserStorage.TryGetTemporaryAuthData(id, out var tempData);
+            var phone = isParserId
+                ? parser?.Phone
+                : tempData?.Phone;
 
             return what switch
             {
+                "session_pathname" => GetSessionPath(phone, isTemp),
                 "api_id" => "22262339",
                 "api_hash" => "fc15371db5ea0ba274b93faf572aec6b",
                 "phone_number" => phone,
-                "verification_code" => _parserStorage.TryGetTemporaryAuthData(id, out var tempData)
-                    ? tempData.VerificationCode?.ToString()
-                    : null,
-                "password" => _parserStorage.TryGetTemporaryAuthData(id, out var pwdData)
-                    ? pwdData.TwoFactorPassword
-                    : null,
+                "verification_code" => tempData?.VerificationCode?.ToString(),
+                "password" => tempData?.TwoFactorPassword,
                 _ => null
             };
         }
@@ -273,9 +360,11 @@ namespace MpParserAPI.Services
             return Path.Combine(sessionsFolder, $"{(isTemp ? "temp_session" : "session")}_{cleanedPhone}.session");
         }
 
-        public bool IsPhoneAlreadyInUse(string phone)
+        public async Task<bool> IsPhoneAlreadyInUse(string phone)
         {
-            return _parserStorage.GetAllParsers().Any(p => p.Phone == phone && p.Client != null);
+            var allparsers = await _parserStorage.GetAllParsers();
+             var isphonealreadyused = allparsers.Any(p => p.Phone == phone && p.Client != null);
+            return isphonealreadyused;
         }
 
         public Task<OperationResult<ParserAuthResultDto>> EnterToSessionByKeyAndPassword(Guid parserId, string sessionPassword)
