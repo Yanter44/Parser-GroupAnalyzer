@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using MpParserAPI.DbContext;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models.AdminDtos;
 
@@ -11,12 +14,16 @@ namespace MpParserAPI.Admin
         private readonly IAdmin _adminService;
         private readonly IParserDataStorage _parserDataStorage;
         private readonly ISpaceProxy _spaceproxyService;
-        public AdminController(IAdmin adminService, IParserDataStorage parserDataStorage, ISpaceProxy spaceproxyService)
+        private readonly IDbContextFactory<ParserDbContext> _dbContextFactory;
+        public AdminController(IAdmin adminService, IParserDataStorage parserDataStorage, 
+            ISpaceProxy spaceproxyService, IDbContextFactory<ParserDbContext> dbContextFactory)
         {
             _adminService = adminService;
             _parserDataStorage = parserDataStorage;
             _spaceproxyService = spaceproxyService;
+            _dbContextFactory = dbContextFactory;
         }
+        [Authorize]
         [HttpGet("GetAllParsers")]
         public async Task<IActionResult> GetAllParsers()
         {
@@ -24,20 +31,23 @@ namespace MpParserAPI.Admin
             List<AllParsersResponceDto> allParsersResponceDtos = new List<AllParsersResponceDto>();
             foreach (var parser in parsers)
             {
+                using var database = await _dbContextFactory.CreateDbContextAsync();
+                var existparser = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parser.Id);
                 var model = new AllParsersResponceDto()
                 {
                     ParserId = parser.Id.ToString(),
                     Password = parser.Password,
                     TgNickname = parser.Client.User.username,
                     TotalParsingTime = parser.TotalParsingMinutes?.ToString(@"hh\:mm\:ss") ?? "00:00:00",
-                    PaidTotalParsingTime = parser.TotalParsingMinutes?.ToString(@"hh\:mm\:ss") ?? "00:00:00",
+                    PaidTotalParsingTime = existparser.PaidMinutes?.ToString(@"hh\:mm\:ss") ?? "00:00:00",
                     ProxyAddress = parser.ProxyAdress != null ? $"{parser.ProxyAdress.IpAddress}:{parser.ProxyAdress.Socks5Port}" : "???"
                 };
                 allParsersResponceDtos.Add(model);
             }
             return Ok(allParsersResponceDtos);
         }
-       
+
+        [Authorize]
         [HttpPost("AddTimeParsing")]
         public async Task<IActionResult> AddTimeParsing(AddTimeParsingModelDto model)
         {
@@ -49,6 +59,7 @@ namespace MpParserAPI.Admin
             return BadRequest();
         }
 
+        [Authorize]
         [HttpPost("SetNewProxy")]
         public async Task<IActionResult> SetNewProxy(SetNewProxyDto model)
         {
@@ -56,7 +67,6 @@ namespace MpParserAPI.Admin
             var result = await _spaceproxyService.SetNewProxy(parserId, model.ProxyAdress);
             if (result)
             {
-                // Передаем parserId в метод
                 var availableproxy = await _spaceproxyService.GetAvailableProxyByProxyAdress(
                     model.ProxyAdress,
                     parserId);
@@ -73,7 +83,7 @@ namespace MpParserAPI.Admin
             }
             return BadRequest();
         }
-
+        [Authorize]
         [HttpDelete("DeleteUserAndParser")]
         public async Task<IActionResult> DeleteUserAndParser(DeleteUserAndParserDto model)
         {

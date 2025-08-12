@@ -88,7 +88,6 @@ namespace MpParserAPI.Services
                             return proxy.CreateConnection(address, port);
                         };
                     }
-                  
                     Environment.SetEnvironmentVariable("WTG_LOG", "ALL");
                     await parserData.Client.LoginUserIfNeeded();
 
@@ -245,6 +244,7 @@ namespace MpParserAPI.Services
 
         private async Task<OperationResult<ParserAuthResultDto>> FinalizeParserCreation(Guid tempAuthId)
         {
+            _logger.LogInformation("Подготовительный этап завершения создания клиента");
             if (!_parserStorage.TryGetTempClient(tempAuthId, out var tempClient))
                 return OperationResult<ParserAuthResultDto>.Fail("Временная сессия не найдена.");
 
@@ -280,12 +280,17 @@ namespace MpParserAPI.Services
                 File.Move(sessionPath, finalSessionPath);
             }
 
-            var parser = new ParserData(parserId, password, phone);
-         
+            var parser = new ParserData(parserId, password, phone)
+            {
+   
+                TotalParsingMinutes = TimeSpan.FromMinutes(30) 
+            };
+            _logger.LogInformation($"Создан новый клиент(парсер) {parser.Id}, \n Пароль: {parser.Password} \n Телефон: {parser.Phone} \nОбщее время парсинга: {parser.TotalParsingMinutes}");
+
             _parserStorage.AddOrUpdateParser(parserId, parser);
 
             parser.Client = new Client(what => Config(what, parserId));
-
+            _logger.LogInformation("Создан новый Телеграм клиент для парсера");
             var gettedAvailableProxy = await _spaceProxyService.GetAndSetAvailableProxy(parser.Id);
             if (gettedAvailableProxy != null)
             {
@@ -302,10 +307,10 @@ namespace MpParserAPI.Services
             await parser.Client.LoginUserIfNeeded();
 
             parser.AuthState = TelegramAuthState.Authorized;
-
+            _logger.LogInformation("Успешно выполнен вход в телеграмм");
 
             _parserStorage.TryRemoveTemporaryAuthData(tempAuthId);
-
+            _logger.LogInformation("Очистили старую временную дату");
             var newparserStateModel = new ParserStateTable()
             {
                 ParserId = parserId,
@@ -316,9 +321,9 @@ namespace MpParserAPI.Services
                 TotalParsingMinutes = TimeSpan.FromMinutes(30),
                 TargetGroups = new List<GroupReference>()
             };
-
             using var database = await _dbContextFactory.CreateDbContextAsync();
             database.ParsersStates.Add(newparserStateModel);
+            _logger.LogInformation("Успешно добавили запись о парсере в бд");
             await database.SaveChangesAsync();
 
             return OperationResult<ParserAuthResultDto>.Ok(new ParserAuthResultDto

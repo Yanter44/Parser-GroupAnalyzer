@@ -1,7 +1,12 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using MpParserAPI.Controllers;
+using MpParserAPI.DbContext;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models.SpaceProxyDto;
+using TL;
 using WTelegram;
 
 namespace MpParserAPI.Services
@@ -12,15 +17,30 @@ namespace MpParserAPI.Services
         private readonly IConfiguration _configuration;
         private readonly IParserDataStorage _parserDataStorage;
         private readonly ILogger<SpaceProxyService> _logger;
+        private readonly IHubContext<ParserHub> _parserHubContext;
+        private readonly INotify _notificationService;
+        private readonly IDbContextFactory<ParserDbContext> _dbContextFactory;
+        private readonly IParser _parserService;
         private ConcurrentDictionary<string, Guid> ProxyServersAndParsersIds = new ConcurrentDictionary<string, Guid>();
 
         //ip-address proxy and parserId 
-        public SpaceProxyService(IHttpClientFactory httpClientFactory, IConfiguration configuration, IParserDataStorage parserDataStorage, ILogger<SpaceProxyService> logger)
+        public SpaceProxyService(IHttpClientFactory httpClientFactory,
+            IConfiguration configuration, 
+            IParserDataStorage parserDataStorage,
+            ILogger<SpaceProxyService> logger,
+            IHubContext<ParserHub> parserHub,
+            INotify notificationService,
+            IDbContextFactory<ParserDbContext> dbcontextFactory,
+            IParser parserService)
         {
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
             _parserDataStorage = parserDataStorage;
             _logger = logger;
+            _parserHubContext = parserHub;
+            _notificationService = notificationService;
+            _dbContextFactory = dbcontextFactory;
+            _parserService = parserService;
         }
 
         public async Task<bool> SetNewProxy(Guid parserId, string ProxyAdress)
@@ -55,15 +75,32 @@ namespace MpParserAPI.Services
             if (!_parserDataStorage.TryGetParser(parserId, out var parser))
                 return false;
 
+            bool wasParsingActive = parser.IsParsingStarted;
+            TimeSpan? remainingTime = null;
+            TimeSpan? originalParsingDelay = parser.ParsingDelay;
+            var keywords = parser.Keywords;
+            var targetGroups = parser.TargetGroups.ToList();
+
+            if (wasParsingActive)
+            {
+                if (parser.ParsingStartedAt.HasValue && originalParsingDelay.HasValue)
+                {
+                    var elapsed = DateTime.UtcNow - parser.ParsingStartedAt.Value;
+                    remainingTime = originalParsingDelay.Value - elapsed;
+                    if (remainingTime < TimeSpan.Zero)
+                        remainingTime = TimeSpan.Zero;
+                }
+
+                await _parserService.StopParsing(parserId);
+            }
+
             var oldProxy = parser.ProxyAdress;
             var oldProxyIp = oldProxy?.IpAddress;
 
             try
             {
                 if (!string.IsNullOrEmpty(oldProxyIp))
-                {
                     ProxyServersAndParsersIds.TryRemove(oldProxyIp, out _);
-                }
 
                 ProxyServersAndParsersIds.AddOrUpdate(
                     proxy.IpAddress,
@@ -71,8 +108,11 @@ namespace MpParserAPI.Services
                     (key, oldValue) => parserId);
 
                 parser.ProxyAdress = proxy;
-
                 parser.DisposeData();
+
+                parser.Keywords = keywords;
+                parser.TargetGroups = targetGroups;
+
                 parser.Client = new Client(what =>
                 {
                     if (what == "session_pathname")
@@ -100,21 +140,48 @@ namespace MpParserAPI.Services
                 await parser.Client.LoginUserIfNeeded();
                 parser.AuthState = TelegramAuthState.Authorized;
 
+                if (wasParsingActive)
+                {
+                    parser.ParsingDelay = originalParsingDelay;
+
+                    if (remainingTime.HasValue && remainingTime > TimeSpan.Zero)
+                    {
+                        await _parserService.StartParsing(parserId);
+                    }
+                    else if (originalParsingDelay.HasValue)
+                    {
+                        parser.TotalParsingMinutes ??= TimeSpan.Zero;
+                        parser.TotalParsingMinutes -= originalParsingDelay.Value;
+
+                        using var database = await _dbContextFactory.CreateDbContextAsync();
+                        var parserState = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
+                        if (parserState != null)
+                        {
+                            parserState.TotalParsingMinutes = parser.TotalParsingMinutes;
+                            await database.SaveChangesAsync();
+                        }
+                    }
+                }                
+                await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ParserChangedProxy", remainingTime?.ToString(@"hh\:mm\:ss") ?? "00:00:00");
                 return true;
-            }
+            }          
             catch (Exception ex)
             {
-                _logger.LogError($"Ошибка при переподключении парсера {parserId}: {ex.Message}");
+                _logger.LogError(ex, "Ошибка при переподключении парсера {ParserId}", parserId);
 
-                if (parser.ProxyAdress != null && parser.ProxyAdress.IpAddress == proxy.IpAddress)
+                if (parser.ProxyAdress?.IpAddress == proxy.IpAddress)
                 {
                     ProxyServersAndParsersIds.TryRemove(proxy.IpAddress, out _);
-
                     if (!string.IsNullOrEmpty(oldProxyIp))
-                    {
                         ProxyServersAndParsersIds.TryAdd(oldProxyIp, parserId);
-                    }
+
                     parser.ProxyAdress = oldProxy;
+                }
+
+                if (wasParsingActive && originalParsingDelay.HasValue)
+                {
+                    parser.ParsingDelay = originalParsingDelay;
+                    await _parserService.StartParsing(parserId);
                 }
 
                 return false;

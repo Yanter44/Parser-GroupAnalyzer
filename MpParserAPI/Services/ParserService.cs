@@ -176,7 +176,7 @@ public class ParserService : IParser
                                             messageLink = $"https://t.me/{groupUsername}/{msg.id}";
                                         }
 
-                                      //  await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"Пользователь: {existingTelegramUser.FirstName}\n\nСообщение: {msg.message}\n\nГруппа: {groupTitle}\nUsername: @{user.username}", messageLink);
+                                        await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"Пользователь: {existingTelegramUser.FirstName}\n\nСообщение: {msg.message}\n\nГруппа: {groupTitle}\nUsername: @{user.username}", messageLink);
 
                                         var formattedTime = FormatToMoscowTime(parserlog.CreatedAt);
 
@@ -275,8 +275,6 @@ public class ParserService : IParser
         await database.SaveChangesAsync();
         return OperationResult<object>.Ok("Группы успешно установлены.");
     }
-
-
 
     public async Task<OperationResult<object>> SetKeywords(Guid parserId, List<string> keywordss)
     {
@@ -431,7 +429,7 @@ public class ParserService : IParser
                 parser.ParsingTimer = new Timer(async _ =>
                 {
                     await StopParsing(parserId);
-              //      await _notificationService.SendSimpleNotify(parserId, "Парсинг автоматически остановлен по таймеру");
+                    await _notificationService.SendSimpleNotify(parserId, "Парсинг автоматически остановлен по таймеру");
                     _logger.LogInformation($"Парсинг автоматически остановлен по таймеру для {parserId}");
                 },
                 null,
