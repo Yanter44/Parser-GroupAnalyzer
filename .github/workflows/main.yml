@@ -1,0 +1,14 @@
+name: Simple Test
+
+on: [push]  # Запуск при любом push в репозиторий
+
+jobs:
+  check-code:
+    runs-on: ubuntu-latest  # Бесплатная виртуальная машина от GitHub
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4  # Клонирует ваш код
+
+      - name: Print hello
+        run: echo "Всё работает! ✅"
