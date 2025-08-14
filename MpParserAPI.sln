@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.13.35931.197 d17.13
+VisualStudioVersion = 17.13.35931.197
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MpParserAPI", "MpParserAPI\MpParserAPI.csproj", "{30F88373-1DAE-4061-8C0D-B56DAA1E2224}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MpBossParserNotification", "MpBossParserNotification\MpBossParserNotification\MpBossParserNotification.csproj", "{C04A81F0-1EDA-249A-A7D0-873F958C5CD3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{30F88373-1DAE-4061-8C0D-B56DAA1E2224}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{30F88373-1DAE-4061-8C0D-B56DAA1E2224}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{30F88373-1DAE-4061-8C0D-B56DAA1E2224}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C04A81F0-1EDA-249A-A7D0-873F958C5CD3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C04A81F0-1EDA-249A-A7D0-873F958C5CD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C04A81F0-1EDA-249A-A7D0-873F958C5CD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C04A81F0-1EDA-249A-A7D0-873F958C5CD3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
