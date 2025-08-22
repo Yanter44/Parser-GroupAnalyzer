@@ -24,12 +24,12 @@ jobs:
       # 3. Сборка и пуш образов
       - name: Build and push parserochek
         run: |
-          docker build -t yanterbrown44/parserochek:latest -f Parserochek/Dockerfile .
+          docker build -t yanterbrown44/parserochek:latest -f MpParserAPI/Dockerfile .
           docker push yanterbrown44/parserochek:latest
 
       - name: Build and push bot
         run: |
-          docker build -t yanterbrown44/tgbotik:latest -f Bot/Dockerfile .
+          docker build -t yanterbrown44/tgbotik:latest -f MpBossParserNotification/Dockerfile .
           docker push yanterbrown44/tgbotik:latest
 
       # 4. Деплой на сервер через SSH
