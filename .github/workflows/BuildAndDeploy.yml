@@ -3,7 +3,7 @@ name: Build and Deploy
 on:
   push:
     branches:
-      - main   # или твоя ветка
+      - master
 
 jobs:
   build-and-deploy:
@@ -21,18 +21,23 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 3. Сборка и пуш образов
+      # 3. Сборка и пуш API (парсер
       - name: Build and push parserochek
         run: |
-          docker build -t yanterbrown44/parserochek:latest -f MpParserAPI/Dockerfile .
+          docker build -t yanterbrown44/parserochek:latest \
+            -f MpParserAPI/Dockerfile \
+            MpParserAPI/
           docker push yanterbrown44/parserochek:latest
 
+      # 4. Сборка и пуш бота
       - name: Build and push bot
         run: |
-          docker build -t yanterbrown44/tgbotik:latest -f MpBossParserNotification/Dockerfile .
+          docker build -t yanterbrown44/tgbotik:latest \
+            -f MpBossParserNotification/MpBossParserNotification/Dockerfile \
+            MpBossParserNotification/MpBossParserNotification/
           docker push yanterbrown44/tgbotik:latest
 
-      # 4. Деплой на сервер через SSH
+      # 5. Деплой на сервер через SSH
       - name: Deploy to server
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -40,6 +45,6 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /path/to/your/project
+            cd /root/parserServer/
             docker-compose pull
             docker-compose up -d
