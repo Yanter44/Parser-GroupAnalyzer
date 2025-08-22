@@ -3,7 +3,7 @@ name: Build and Deploy
 on:
   push:
     branches:
-      - main   # или твоя ветка
+      - master   # или твоя ветка
 
 jobs:
   build-and-deploy:
