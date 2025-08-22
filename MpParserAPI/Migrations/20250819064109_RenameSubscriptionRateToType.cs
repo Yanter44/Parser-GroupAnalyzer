@@ -5,24 +5,24 @@
 namespace MpParserAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class AddedPaidMinutes : Migration
+    public partial class RenameSubscriptionRateToType : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<TimeSpan>(
-                name: "PaidMinutes",
+            migrationBuilder.RenameColumn(
+                name: "SubscriptionRate",
                 table: "ParsersStates",
-                type: "interval",
-                nullable: true);
+                newName: "SubscriptionType");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "PaidMinutes",
-                table: "ParsersStates");
+            migrationBuilder.RenameColumn(
+                name: "SubscriptionType",
+                table: "ParsersStates",
+                newName: "SubscriptionRate");
         }
     }
 }

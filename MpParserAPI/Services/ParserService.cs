@@ -20,8 +20,7 @@ public class ParserService : IParser
     private readonly ILogger<ParserService> _logger;
     private readonly INotify _notificationService;
     private readonly MpParserAPI.Interfaces.IRedis _redisService;
-
-    private static readonly TimeZoneInfo MoscowTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Russian Standard Time");
+    private readonly ISubscriptionManager _subscriptionManager;
     public ParserService(ICloudinaryService cloudinaryService,
                          IGenerator generator,
                          IDbContextFactory<ParserDbContext> dbContextFactory,
@@ -29,7 +28,8 @@ public class ParserService : IParser
                          IHubContext<ParserHub> parserhubContext,
                          ILogger<ParserService> logger,
                          INotify notificationService,
-                         MpParserAPI.Interfaces.IRedis redisService)
+                         MpParserAPI.Interfaces.IRedis redisService,
+                         ISubscriptionManager subscriptionManager)
     {
         _cloudinaryService = cloudinaryService;
         _generatorService = generator;
@@ -39,14 +39,9 @@ public class ParserService : IParser
         _logger = logger;
         _notificationService = notificationService;
         _redisService = redisService;
+        _subscriptionManager = subscriptionManager;
     }
 
-
-    private static string FormatToMoscowTime(DateTime utcDateTime)
-    {
-        var moscowTime = TimeZoneInfo.ConvertTimeFromUtc(utcDateTime, MoscowTimeZone);
-        return moscowTime.ToString("HH:mm");
-    }
     private async Task HandleUpdate(Guid parserId, IObject updateObj)
     {
         if (!_parserStorage.ContainsParser(parserId))
@@ -67,10 +62,12 @@ public class ParserService : IParser
                     {
                         if (msg.from_id is PeerUser peerUser)
                         {
-                            var wordsInMessage = Regex.Split(msg.message.ToLower(), @"\W+");
-                            var keywords = parser.Keywords;
+                            var messageText = msg.message.ToLower().Trim();
+                            var keywords = parser.Keywords.ToList();
 
-                            if (keywords.Any(kw => wordsInMessage.Contains(kw.Trim().ToLower())))
+                            bool isMatch = CheckForKeywordsOrPhrases(messageText, keywords);
+
+                            if (isMatch)
                             {
                                 var userId = peerUser.user_id;
                                 var dialogs = await parserData.Client.Messages_GetAllDialogs();
@@ -176,9 +173,7 @@ public class ParserService : IParser
                                             messageLink = $"https://t.me/{groupUsername}/{msg.id}";
                                         }
 
-                                        await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"Пользователь: {existingTelegramUser.FirstName}\n\nСообщение: {msg.message}\n\nГруппа: {groupTitle}\nUsername: @{user.username}", messageLink);
-
-                                        var formattedTime = FormatToMoscowTime(parserlog.CreatedAt);
+                                        //await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"Пользователь: {existingTelegramUser.FirstName}\n\nСообщение: {msg.message}\n\nГруппа: {groupTitle}\nUsername: @{user.username}", messageLink);
 
                                         await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ReceiveMessage", new
                                         {
@@ -186,16 +181,19 @@ public class ParserService : IParser
                                             Name = user.first_name,
                                             Username = user.username,
                                             MessageText = msg.message,
-                                            MessageTime = formattedTime
+                                            MessageTime = parserlog.CreatedAt.ToString("HH:mm")
 
-                                        });
-                                        Console.WriteLine("Сообщение из отслеживаемой группы:");
-                                        Console.WriteLine($"ID: {user.id}");
-                                        Console.WriteLine($"Имя: {user.first_name} {user.last_name}");
-                                        Console.WriteLine($"Никнейм: @{user.username}");
-                                        Console.WriteLine($"Телефон: {user.phone}");
-                                        Console.WriteLine($"Текст: {msg.message}");
-                                        Console.WriteLine(new string('-', 50));
+                                       });
+
+                                        _logger.LogInformation("""
+                                         Для парсера {ParserId} пришло сообщение:
+                                         Пользователь: {UserId} ({FirstName} {LastName})
+                                         Никнейм: @{Username}
+                                         Телефон: {Phone}
+                                         Группа: {GroupTitle}
+                                         Сообщение: {Message}
+                                         """, parserId, user.id, user.first_name, user.last_name,
+                                         user.username, user.phone, groupTitle, msg.message);
                                     }
                                 }
                             }
@@ -205,7 +203,47 @@ public class ParserService : IParser
             }
         }
     }
-  
+    private bool CheckForKeywordsOrPhrases(string messageText, List<string> keywords)
+    {
+        if (string.IsNullOrEmpty(messageText) || keywords == null || !keywords.Any())
+            return false;
+
+        var wordsInMessage = Regex.Split(messageText, @"\W+")
+            .Where(word => !string.IsNullOrEmpty(word))
+            .ToList();
+
+        foreach (var keyword in keywords)
+        {
+            var trimmedKeyword = keyword.Trim().ToLower();
+
+            if (string.IsNullOrEmpty(trimmedKeyword))
+                continue;
+
+            if (trimmedKeyword.Contains(' '))
+            {
+                if (messageText.Contains(trimmedKeyword))
+                {
+                    return true;
+                }
+                var normalizedKeyword = Regex.Replace(trimmedKeyword, @"\s+", " ");
+                var normalizedMessage = Regex.Replace(messageText, @"\s+", " ");
+
+                if (normalizedMessage.Contains(normalizedKeyword))
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                if (wordsInMessage.Contains(trimmedKeyword))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
     public async Task<OperationResult<object>> SetGroupsNames(Guid parserId, IEnumerable<string> groupNames)
     {
         if (!_parserStorage.ContainsParser(parserId))
@@ -228,13 +266,13 @@ public class ParserService : IParser
         var newGroups = new List<InputPeer>();
         var groupReferences = new List<GroupReference>();
         var groupTitles = new List<string>();
-
         foreach (var groupName in groupNames)
         {
             var group = dialogs.chats.Values.OfType<ChatBase>().FirstOrDefault(c => c.Title == groupName);
             if (group != null)
             {
                 var inputPeer = group.ToInputPeer();
+
                 if (inputPeer is InputPeerChannel inputPeerChannel)
                 {
                     newGroups.Add(inputPeer);
@@ -244,6 +282,18 @@ public class ParserService : IParser
                     {
                         ChatId = inputPeerChannel.channel_id,
                         AccessHash = inputPeerChannel.access_hash,
+                        Title = group.Title
+                    });
+                }
+                else if (inputPeer is InputPeerChat inputPeerChat)
+                {
+                    newGroups.Add(inputPeer);
+                    groupTitles.Add(group.Title);
+
+                    groupReferences.Add(new GroupReference
+                    {
+                        ChatId = inputPeerChat.chat_id,
+                        AccessHash = 0, 
                         Title = group.Title
                     });
                 }
@@ -304,7 +354,6 @@ public class ParserService : IParser
         await database.SaveChangesAsync();
         return OperationResult<object>.Ok("Ключевые слова успешно установлены.");
     }
-
 
     public async Task<bool> IsParserAuthValid(Guid parserId, string password)
     {
@@ -387,13 +436,13 @@ public class ParserService : IParser
                 Username = x.TelegramUser.Username,
                 ProfileImageUrl = x.TelegramUser.ProfileImageUrl,
                 MessageTime = x.CreatedAt.ToLocalTime().ToString("HH:mm"),
-
-
             })
             .ToListAsync();
 
-        var remainingTime = parser.GetRemainingParsingTime() ?? TimeSpan.Zero;
-
+        var TotalParsingTime = _subscriptionManager.GetTotalParsingTime(parser);
+        var AvailableParsingTime = _subscriptionManager.GetRemainingParsingTime(parserId);
+        var formattedTotalParsingTime = TimeFormatterHelper.ToHumanReadableString(TotalParsingTime);
+        var formattedAvailableParsingTime = TimeFormatterHelper.ToHumanReadableStringThisSeconds(AvailableParsingTime);
         var response = new GetParserStateResponceDto
         {
             parserDataResponceDto = new ParserDataResponceDto
@@ -406,8 +455,8 @@ public class ParserService : IParser
                 ParserId = parser.Id,
                 ParserPassword = parser.Password,
                 UserGroupsList = usergroupsList,
-                RemainingParsingTimeHoursMinutes = remainingTime.ToString(@"hh\:mm\:ss") ?? "00:00:00",
-                TotalParsingMinutes = parser.TotalParsingMinutes?.ToString(@"hh\:mm\:ss") ?? "00:00:00"
+                RemainingParsingTimeHoursMinutes = formattedAvailableParsingTime,
+                TotalParsingTime = formattedTotalParsingTime
             },
             parserLogs = parserLogsRaw
         };
@@ -416,37 +465,46 @@ public class ParserService : IParser
     }
     public async Task StartParsing(Guid parserId)
     {
-        if (_parserStorage.TryGetParser(parserId, out var parser) && parser.Client != null)
+
+        if (!_parserStorage.TryGetParser(parserId, out var parser) || parser.Client == null)
+            return;
+
+        if (parser.IsParsingStarted)
         {
-            Func<IObject, Task> handler = async update => await HandleUpdate(parserId, update);
-            parser.Client.OnUpdates += handler;
-            _parserStorage.AddHandler(parserId, handler);
-            parser.IsParsingStarted = true;
-            parser.ParsingStartedAt = DateTime.UtcNow;
-         
-            if (parser.ParsingDelay.HasValue)
-            {
-                parser.ParsingTimer = new Timer(async _ =>
-                {
-                    await StopParsing(parserId);
-                    await _notificationService.SendSimpleNotify(parserId, "Парсинг автоматически остановлен по таймеру");
-                    _logger.LogInformation($"Парсинг автоматически остановлен по таймеру для {parserId}");
-                },
-                null,
-                parser.ParsingDelay.Value,
-                Timeout.InfiniteTimeSpan);
-            }
-            using var databse = await _dbContextFactory.CreateDbContextAsync();
-            var existparserProfile = databse.ParsersStates.FirstOrDefault(x => x.ParserId == parserId);
-            if(existparserProfile != null)
-            {
-               var spammessages =  existparserProfile.SpamWords.ToList();
-                foreach (var message in spammessages)
-                {
-                    await _redisService.SetAddAsync(parserId.ToString(), message);
-                }
-           
-            }
+            _logger.LogWarning("Парсинг уже запущен для {ParserId}", parserId);
+            return;
+        }
+        if (!_subscriptionManager.CanStartParsing(parser, out var allowedDuration))
+        {
+            _logger.LogWarning("Недостаточно времени подписки для парсера {ParserId}", parserId);
+            return;
+        }
+
+        Func<IObject, Task> handler = async update => await HandleUpdate(parserId, update);
+        parser.Client.OnUpdates += handler;
+        _parserStorage.AddHandler(parserId, handler);
+
+        parser.IsParsingStarted = true;
+        parser.ParsingStartedAt = DateTime.UtcNow;
+        parser.ParsingDelay = allowedDuration; 
+
+        parser.ParsingTimer = new Timer(async _ =>
+        {
+            await StopParsing(parserId);
+            _logger.LogInformation("Парсинг автоматически остановлен по таймеру для {ParserId}", parserId);
+        },
+        null,
+        allowedDuration, 
+        Timeout.InfiniteTimeSpan);
+
+
+        using var database = await _dbContextFactory.CreateDbContextAsync();
+        var parserProfile = database.ParsersStates.FirstOrDefault(x => x.ParserId == parserId);
+
+        var spamWords = parserProfile?.SpamWords?.ToArray();
+        if (spamWords?.Length > 0)
+        {
+            await _redisService.SetAddRangeAsync(parserId.ToString(), spamWords); 
         }
     }
 
@@ -498,53 +556,6 @@ public class ParserService : IParser
             await Task.CompletedTask;
         }
     }
-
-    public Task<OperationResult<object>> AddTimeParsing(Guid parserId, TimeParsingDto dto)
-    {
-        if (!_parserStorage.TryGetParser(parserId, out var parser))
-            return Task.FromResult(OperationResult<object>.Fail($"Парсер с id {parserId} не найден."));
-
-        var newDelay = TimeSpan.FromHours(dto.Hours) + TimeSpan.FromMinutes(dto.Minutes);
-
-        if (parser.TotalParsingMinutes.HasValue && newDelay > parser.TotalParsingMinutes.Value)
-        {
-            return Task.FromResult(OperationResult<object>.Fail(
-                $"Нельзя установить время больше чем общее время парсинга. Допустимо максимум: {parser.TotalParsingMinutes.Value.TotalMinutes} минут."));
-        }
-        parser.ParsingTimer?.Dispose();
-        parser.ParsingTimer = null;
-
-        if (newDelay > TimeSpan.Zero)
-        {
-            parser.ParsingDelay = newDelay;
-            parser.ParsingStartedAt = DateTime.UtcNow;
-        }
-        else
-        {
-            parser.ParsingDelay = null;
-            parser.ParsingStartedAt = null;
-        }
-
-        return Task.FromResult(OperationResult<object>.Ok(
-            parser.ParsingDelay.HasValue
-                ? $"Время парсинга для парсера {parserId} настроено на {parser.ParsingDelay.Value.TotalMinutes} минут."
-                : "Таймер парсинга сброшен."));
-    }
-
-
-    public GetParsingRemainTimeResponceDto GetParserRemainTime(Guid parserId)
-    {
-        if (_parserStorage.TryGetParser(parserId, out var parser))
-        {
-            var remainingTime = parser.GetRemainingParsingTime() ?? TimeSpan.Zero;
-            return new GetParsingRemainTimeResponceDto()
-            {
-                RemainingParsingTimeHoursMinutes = remainingTime.ToString(@"hh\:mm\:ss") ?? "00:00:00"
-            };
-        }
-        return null;
-    }
-
     public async Task<OperationResult<object>> AddNewSpamMessage(Guid parserId, AddNewSpamMessageDto modelDto)
     {
         if (!_parserStorage.TryGetParser(parserId, out var parser))

@@ -18,7 +18,9 @@ namespace MpParserAPI.Controllers
             if (!string.IsNullOrEmpty(parserId))
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, parserId);
-                _logger.LogInformation($"Клиент {Context.ConnectionId} добавлен в группу {parserId}");
+                _logger.LogInformation(
+                "Клиент {ConnectionId} добавлен в группу {ParserId}",
+                Context.ConnectionId, parserId);
             }
 
             await base.OnConnectedAsync();
@@ -31,7 +33,9 @@ namespace MpParserAPI.Controllers
             if (!string.IsNullOrEmpty(parserId))
             {
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, parserId);
-                _logger.LogInformation($"Клиент {Context.ConnectionId} удалён из группы {parserId}");
+                _logger.LogInformation(
+                "Клиент {ConnectionId} удалён из группы {ParserId}",
+                Context.ConnectionId, parserId);
             }
             await base.OnDisconnectedAsync(exception);
         }

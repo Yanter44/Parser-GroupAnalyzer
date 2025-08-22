@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using MpParserAPI.Models.AdminDtos.AdminAuth;
-using TL;
 
 namespace MpParserAPI.Admin
 {

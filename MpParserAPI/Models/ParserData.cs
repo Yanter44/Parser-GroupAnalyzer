@@ -1,4 +1,5 @@
-﻿using MpParserAPI.Models.SpaceProxyDto;
+﻿using MpParserAPI.Enums;
+using MpParserAPI.Models.SpaceProxyDto;
 using TL;
 
 namespace MpParserAPI.Models
@@ -17,6 +18,8 @@ namespace MpParserAPI.Models
         public ProxyInfo ProxyAdress { get; set; }
         public TelegramAuthState AuthState { get; set; }
         public Timer ParsingTimer { get; set; }
+        public SubscriptionType SubscriptionType { get; set; }
+        public DateTime SubscriptionEndDate { get; set; }
         public TimeSpan? TotalParsingMinutes { get; set; }
         public TimeSpan? ParsingDelay { get; set; }
         public DateTime? ParsingStartedAt { get; set; }
@@ -37,15 +40,6 @@ namespace MpParserAPI.Models
             TargetGroups?.Clear();
             TargetGroups = null;
             AuthState = TelegramAuthState.None;
-        }
-        public TimeSpan? GetRemainingParsingTime()
-        {
-            if (!ParsingStartedAt.HasValue || !ParsingDelay.HasValue)
-                return null;
-
-            var elapsed = DateTime.UtcNow - ParsingStartedAt.Value;
-            var remaining = ParsingDelay.Value - elapsed;
-            return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
         }
 
     }

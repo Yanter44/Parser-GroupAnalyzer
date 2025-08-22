@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using MpParserAPI.Common;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models.Dtos;
+using MpParserAPI.Utils;
 
 namespace MpParserAPI.Controllers
 {
@@ -11,10 +12,14 @@ namespace MpParserAPI.Controllers
     {
         private readonly IParser _parser;
         private readonly ILogger<ParserConfigController> _logger;
-        public ParserConfigController(IParser parser, ILogger<ParserConfigController> logger)
+        private readonly ISubscriptionManager _subscriptionManager;
+        public ParserConfigController(IParser parser, 
+            ILogger<ParserConfigController> logger, 
+            ISubscriptionManager subscriptionManager)
         {
             _parser = parser;
             _logger = logger;
+            _subscriptionManager = subscriptionManager;
         }
         [ParserAuthorize]
         [HttpPost("StartParsing")]
@@ -86,36 +91,16 @@ namespace MpParserAPI.Controllers
 
             var parserId = (Guid)HttpContext.Items["ParserId"];
 
-            var result = await _parser.SetKeywords(parserId, keywords); 
+            var result = await _parser.SetKeywords(parserId, keywords);
 
             if (result.Success)
             {
-                _logger.LogInformation($"Ключевые слова успешно установлены для ParserId: {parserId}");
+                _logger.LogInformation("Ключевые слова успешно установлены для {ParserId}:", parserId);
                 return Ok(result.Message);
             }
             else
             {
-                _logger.LogWarning($"Не удалось установить ключевые слова для ParserId: {parserId}. Message: {result.Message}");
-                return BadRequest(result.Message);
-            }
-        }
-
-        [ParserAuthorize]
-        [HttpPost("AddTimeParsing")]
-        public async Task<IActionResult> AddTimeParsing([FromBody] TimeParsingDto timeparsingDto)
-        {
-            if (timeparsingDto.Hours == 0 && timeparsingDto.Minutes == 0)
-                return BadRequest("Установите время парсинга");
-
-            var parserId = (Guid)HttpContext.Items["ParserId"];
-            var result = await _parser.AddTimeParsing(parserId, timeparsingDto);
-
-            if (result.Success)
-            {
-                return Ok("Время парсинга успешно установлено");
-            }
-            else
-            {
+                _logger.LogWarning("Не удалось установить ключевые слова для ParserId: {ParserId}. Message: {Message}", parserId, result.Message);
                 return BadRequest(result.Message);
             }
         }
@@ -148,12 +133,16 @@ namespace MpParserAPI.Controllers
         }
         [ParserAuthorize]
         [HttpPost("GetParserRemainTime")]
-        public IActionResult GetParserRemainTime()
+        public async Task<IActionResult> GetParserRemainTime()
         {
             var parserId = (Guid)HttpContext.Items["ParserId"];
-            var result = _parser.GetParserRemainTime(parserId);
-            return Ok(result);
+            var timeSpan = _subscriptionManager.GetRemainingParsingTime(parserId);
+
+            var formattedTime = TimeFormatterHelper.ToHumanReadableStringThisSeconds(timeSpan);
+
+            return Ok(new { remainingParsingTimeHoursMinutes = formattedTime });  
         }
+
         [ParserAuthorize]
         [HttpPost("AddNewSpamMessage")]
         public async Task<IActionResult> AddNewSpamMessage(AddNewSpamMessageDto messageDto)

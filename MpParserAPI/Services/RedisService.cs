@@ -1,5 +1,4 @@
-﻿using MpParserAPI.Interfaces;
-using StackExchange.Redis;
+﻿using StackExchange.Redis;
 
 namespace MpParserAPI.Services
 {
@@ -12,8 +11,8 @@ namespace MpParserAPI.Services
         {
             var redisConnectionString = configuration.GetConnectionString("Redis") 
                                         ?? configuration["Redis:ConnectionString"];
-            var redis = ConnectionMultiplexer.Connect(redisConnectionString);
-            _database = redis.GetDatabase();
+             _redis = ConnectionMultiplexer.Connect(redisConnectionString);
+            _database = _redis.GetDatabase();
         }
 
         public Task<bool> SetAddAsync(string key, string value)
@@ -40,6 +39,11 @@ namespace MpParserAPI.Services
         public Task<bool> DeleteKeyAsync(string key)
         {
             return _database.KeyDeleteAsync(key);
+        }
+        public async Task<long> SetAddRangeAsync(string key, IEnumerable<string> values)
+        {
+            var redisValues = values.Select(x => (RedisValue)x).ToArray();
+            return await _database.SetAddAsync(key, redisValues); 
         }
     }
 }

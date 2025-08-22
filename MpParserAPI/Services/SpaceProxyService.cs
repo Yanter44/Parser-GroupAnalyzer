@@ -1,12 +1,10 @@
 ﻿using System.Collections.Concurrent;
-using System.Net;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using MpParserAPI.Controllers;
 using MpParserAPI.DbContext;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models.SpaceProxyDto;
-using TL;
 using WTelegram;
 
 namespace MpParserAPI.Services
@@ -194,7 +192,7 @@ namespace MpParserAPI.Services
                 return null;
 
             var parts = proxyAddress.Split(':');
-            if (parts.Length < 2) return null;
+            if (parts.Length < 2) return null;  
 
             var proxyAddressIp = parts[0];
             int proxyAddressPort;
@@ -241,38 +239,31 @@ namespace MpParserAPI.Services
         {
             var httpClient = _httpClientFactory.CreateClient();
             var apikey = _configuration["SpaceProxy:ApiKey"];
-            var responce = await httpClient.GetAsync($"https://panel.spaceproxy.net/api/proxies/?api_key={apikey}");
-            responce.EnsureSuccessStatusCode();
+            var response = await httpClient.GetAsync($"https://panel.spaceproxy.net/api/proxies/?api_key={apikey}");
+            response.EnsureSuccessStatusCode();
 
-            var result = await responce.Content.ReadFromJsonAsync<SpaceProxyResponse>();
+            var result = await response.Content.ReadFromJsonAsync<SpaceProxyResponse>();
             var listproxies = result.Proxies;
 
             foreach (var proxy in listproxies)
             {
-                if (ProxyServersAndParsersIds.TryGetValue(proxy.IpAddress, out _))
+                if (ProxyServersAndParsersIds.TryAdd(proxy.IpAddress, parserId))
                 {
-                    continue;
-                }
-                else
-                {
-                    var resultt = ProxyServersAndParsersIds.TryAdd(proxy.IpAddress, parserId);
-                    if (resultt)
+                    if (_parserDataStorage.TryGetParser(parserId, out var parser) && parser != null)
                     {
-                        _parserDataStorage.TryGetParser(parserId, out var parser);
-                        if(parser != null)
-                        {
-                            parser.ProxyAdress = proxy;
-                            return proxy;
-                        }        
-                       
+                        parser.ProxyAdress = proxy;
+                        return proxy;
+                    }
+                    else
+                    {
+                        ProxyServersAndParsersIds.TryRemove(proxy.IpAddress, out _);
+                        continue;
                     }
                 }
-               
             }
             return null;
-         
         }
-      
+
         public async Task<ProxyInfo> GetAvailableProxy()
         {
             var httpClient = _httpClientFactory.CreateClient();

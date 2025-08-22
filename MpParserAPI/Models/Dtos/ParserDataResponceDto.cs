@@ -13,7 +13,7 @@
 
         public List<string> UserGroupsList { get; set; }
         public string RemainingParsingTimeHoursMinutes { get; set; }
-        public string TotalParsingMinutes { get; set; }
+        public string TotalParsingTime { get; set; }
 
     }
 }

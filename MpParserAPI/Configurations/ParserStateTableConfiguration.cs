@@ -1,7 +1,9 @@
-﻿using System.Text.Json;
+﻿using System.Reflection.Emit;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using MpParserAPI.Enums;
 using MpParserAPI.Models;
 
 namespace MpParserAPI.Configurations
@@ -30,6 +32,11 @@ namespace MpParserAPI.Configurations
                       {
                           PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                       }));
+            modelbuilder
+                  .Property(e => e.SubscriptionType)
+                  .HasConversion(v => v.ToString(),v => Enum.Parse<SubscriptionType>(v)
+                  );
+
         }
     }
 }

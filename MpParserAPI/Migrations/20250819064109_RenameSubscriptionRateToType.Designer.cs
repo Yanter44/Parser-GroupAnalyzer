@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MpParserAPI.DbContext;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MpParserAPI.Migrations
 {
     [DbContext(typeof(ParserDbContext))]
-    partial class ParserDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250819064109_RenameSubscriptionRateToType")]
+    partial class RenameSubscriptionRateToType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -62,6 +65,9 @@ namespace MpParserAPI.Migrations
                         .IsRequired()
                         .HasColumnType("text[]");
 
+                    b.Property<TimeSpan?>("PaidMinutes")
+                        .HasColumnType("interval");
+
                     b.Property<Guid>("ParserId")
                         .HasColumnType("uuid");
 
@@ -76,9 +82,6 @@ namespace MpParserAPI.Migrations
                     b.Property<string>("SpamWords")
                         .IsRequired()
                         .HasColumnType("jsonb");
-
-                    b.Property<DateTime>("SubscriptionEndDate")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("SubscriptionType")
                         .IsRequired()

@@ -1,8 +1,7 @@
-﻿using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MpParserAPI.Common;
-using MpParserAPI.Controllers;
 using MpParserAPI.DbContext;
+using MpParserAPI.Enums;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models;
 using MpParserAPI.Models.AdminDtos;
@@ -23,29 +22,45 @@ namespace MpParserAPI.Services.Admin
             _parserStorage = parserdataStorage;
             _logger = logger;
         }
-        public async Task<OperationResult<object>> AddTimeParsing(AddTimeParsingModelDto modelDto)
+        public async Task<OperationResult<object>> SetSubscriptionType(SetSubscriptionTypeModelDto modelDto)
         {
-            _logger.LogInformation("Начинаем добавление времени парсинга клиенту:");
-            _logger.LogInformation($"Переданные данные из модели: ParserId = {modelDto.ParserId}, Hours = {modelDto.Hours}, Minutes = {modelDto.Minutes}");
-            using var database = await _dbContextFactory.CreateDbContextAsync();
-            var mappedParserIdToGuid = Guid.Parse(modelDto.ParserId);
-            var existParserInDb = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == mappedParserIdToGuid);
-            if (existParserInDb != null)
+            _logger.LogInformation("Начало изменения подписки для парсера: {ParserId}", modelDto.ParserId);
+
+            if (!Guid.TryParse(modelDto.ParserId, out var parserId))
+                return OperationResult<object>.Fail("Неверный формат ParserId");
+
+            if (!Enum.TryParse<SubscriptionType>(modelDto.SubscriptionType, out var subscriptionType))
+                return OperationResult<object>.Fail("Неверный тип подписки");
+
+            if (modelDto.DaysSubscription <= 0)
+                return OperationResult<object>.Fail("Длительность подписки должна быть больше 0 дней");
+
+            using var db = await _dbContextFactory.CreateDbContextAsync();
+
+            var dbParser = await db.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
+            if (dbParser == null)
+                return OperationResult<object>.Fail("Парсер не найден");
+
+            dbParser.SubscriptionType = subscriptionType;
+            dbParser.SubscriptionEndDate = DateTime.UtcNow.AddDays(modelDto.DaysSubscription);
+
+            var timeUntilEnd = dbParser.SubscriptionEndDate - DateTime.UtcNow;
+            dbParser.TotalParsingMinutes = timeUntilEnd;
+
+            if (_parserDataStorage.TryGetParser(parserId, out var parser))
             {
-                existParserInDb.PaidMinutes = TimeSpan.FromHours(modelDto.Hours) + TimeSpan.FromMinutes(modelDto.Minutes);
-                existParserInDb.TotalParsingMinutes += TimeSpan.FromHours(modelDto.Hours) + TimeSpan.FromMinutes(modelDto.Minutes);
-                _logger.LogInformation($"Записанное время в бд: Оплаченное время: {existParserInDb.PaidMinutes}, Общее время парсинга: {existParserInDb.TotalParsingMinutes}");
-                var existInParserDataparser = _parserDataStorage.TryGetParser(mappedParserIdToGuid, out var parserData);
-                if (existInParserDataparser)
-                {
-                    
-                    parserData.TotalParsingMinutes += TimeSpan.FromHours(modelDto.Hours) + TimeSpan.FromMinutes(modelDto.Minutes);
-                    _logger.LogInformation($"Записанное общее время в ParserData: {parserData.TotalParsingMinutes}, {TimeSpan.FromHours(modelDto.Hours) + TimeSpan.FromMinutes(modelDto.Minutes)}");
-                }
+                parser.SubscriptionType = subscriptionType;
+                parser.SubscriptionEndDate = dbParser.SubscriptionEndDate;
+                parser.TotalParsingMinutes = timeUntilEnd;
             }
-            await database.SaveChangesAsync();
+
+            await db.SaveChangesAsync();
+
+            _logger.LogInformation(
+            "Подписка обновлена. Тип: {SubscriptionType}, До конца: {TimeUntilEnd:dd\\.hh\\:mm}",
+             subscriptionType,
+             timeUntilEnd);
             return OperationResult<object>.Ok();
-            
         }
 
         public async Task<OperationResult<object>> DeleteUserAndParser(DeleteUserAndParserDto modelDto)

@@ -1,14 +1,10 @@
-﻿using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MpParserAPI.Common;
 using MpParserAPI.DbContext;
 using MpParserAPI.Enums;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models;
 using MpParserAPI.Models.Dtos;
-using Starksoft.Net.Proxy;
 using TL;
 using WTelegram;
 
@@ -42,6 +38,7 @@ namespace MpParserAPI.Services
         {
             try
             {
+                _logger.LogTrace("Начата попытка подгрузки парсеров из бд");
                 using var database = await _dbContextFactory.CreateDbContextAsync();
                 var allParserStatesInDb = await database.ParsersStates.ToListAsync();
 
@@ -57,6 +54,9 @@ namespace MpParserAPI.Services
                         TargetGroupTitles = parserState.TargetGroups.Select(x => x.Title).ToList(),
                         IsParsingStarted = false,
                         TotalParsingMinutes = parserState.TotalParsingMinutes,
+                        SubscriptionType = parserState.SubscriptionType,
+                        SubscriptionEndDate = parserState.SubscriptionEndDate,
+                        
                     };
 
                     _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
@@ -88,11 +88,8 @@ namespace MpParserAPI.Services
                             return proxy.CreateConnection(address, port);
                         };
                     }
-                    Environment.SetEnvironmentVariable("WTG_LOG", "ALL");
                     await parserData.Client.LoginUserIfNeeded();
-
                     parserData.AuthState = TelegramAuthState.Authorized;
-
                     _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
                 }
 
@@ -100,7 +97,7 @@ namespace MpParserAPI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Ошибка при загрузке парсеров из БД: {ex.Message}");
+                _logger.LogError("Ошибка при загрузке парсеров из БД: {Exception}", ex.Message);
                 return false;
             }
         }
@@ -124,6 +121,20 @@ namespace MpParserAPI.Services
 
             var tempClient = new Client(what => Config(what, tempAuthId, isTemp: true));
 
+            var tempProxy = await _spaceProxyService.GetAvailableProxy();
+            if (tempProxy != null)
+            {
+                tempClient.TcpHandler = async (address, port) =>
+                {
+                    var proxy = new Leaf.xNet.Socks5ProxyClient(tempProxy.IpAddress, tempProxy.Socks5Port)
+                    {
+                        Username = tempProxy.Username,
+                        Password = tempProxy.Password
+                    };
+                    return proxy.CreateConnection(address, port);
+                };
+            }
+
             _parserStorage.AddTempClient(tempAuthId, tempClient);
 
             var loginResult = await tempClient.Login(phone);
@@ -144,7 +155,6 @@ namespace MpParserAPI.Services
                     return OperationResult<Guid>.Fail("Неожиданный результат: " + loginResult);
             }
         }
-
 
 
         public async Task<OperationResult<ParserAuthResultDto>> SubmitVerificationCodeFromTelegram(Guid tempAuthId, int verificationCode)
@@ -285,13 +295,18 @@ namespace MpParserAPI.Services
    
                 TotalParsingMinutes = TimeSpan.FromMinutes(30) 
             };
-            _logger.LogInformation($"Создан новый клиент(парсер) {parser.Id}, \n Пароль: {parser.Password} \n Телефон: {parser.Phone} \nОбщее время парсинга: {parser.TotalParsingMinutes}");
+            _logger.LogInformation(
+            "Создан парсер: {ParserId}, Телефон: {Phone}, Время парсинга: {TotalParsingTime}",
+            parser.Id,
+            parser.Phone,
+            parser.TotalParsingMinutes);
 
             _parserStorage.AddOrUpdateParser(parserId, parser);
 
             parser.Client = new Client(what => Config(what, parserId));
             _logger.LogInformation("Создан новый Телеграм клиент для парсера");
             var gettedAvailableProxy = await _spaceProxyService.GetAndSetAvailableProxy(parser.Id);
+            
             if (gettedAvailableProxy != null)
             {
                 parser.Client.TcpHandler = async (address, port) =>
@@ -319,7 +334,10 @@ namespace MpParserAPI.Services
                 Phone = phone,
                 SpamWords = new List<string>(),
                 TotalParsingMinutes = TimeSpan.FromMinutes(30),
-                TargetGroups = new List<GroupReference>()
+                TargetGroups = new List<GroupReference>(),
+                SubscriptionType = SubscriptionType.Test
+
+
             };
             using var database = await _dbContextFactory.CreateDbContextAsync();
             database.ParsersStates.Add(newparserStateModel);

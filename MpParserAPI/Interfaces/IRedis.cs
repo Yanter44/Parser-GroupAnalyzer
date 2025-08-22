@@ -7,5 +7,6 @@
         Task<string[]> GetAllSetMembersAsync(string key);       
         Task<bool> RemoveSetMemberAsync(string key, string value);
         Task<bool> DeleteKeyAsync(string key);
+        Task<long> SetAddRangeAsync(string key, IEnumerable<string> values);
     }
 }

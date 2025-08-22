@@ -38,9 +38,10 @@ namespace MpParserAPI.Admin
                     ParserId = parser.Id.ToString(),
                     Password = parser.Password,
                     TgNickname = parser.Client.User.username,
-                    TotalParsingTime = parser.TotalParsingMinutes?.ToString(@"hh\:mm\:ss") ?? "00:00:00",
-                    PaidTotalParsingTime = existparser.PaidMinutes?.ToString(@"hh\:mm\:ss") ?? "00:00:00",
-                    ProxyAddress = parser.ProxyAdress != null ? $"{parser.ProxyAdress.IpAddress}:{parser.ProxyAdress.Socks5Port}" : "???"
+                    TotalParsingTime = parser.TotalParsingMinutes?.ToString(@"dd\:hh\:mm") ?? "00:00:00",
+                    SubscriptionRate = parser.SubscriptionType.ToString(),
+                    ProxyAddress = parser.ProxyAdress != null ? $"{parser.ProxyAdress.IpAddress}:{parser.ProxyAdress.Socks5Port}" : "???",
+
                 };
                 allParsersResponceDtos.Add(model);
             }
@@ -48,10 +49,10 @@ namespace MpParserAPI.Admin
         }
 
         [Authorize]
-        [HttpPost("AddTimeParsing")]
-        public async Task<IActionResult> AddTimeParsing(AddTimeParsingModelDto model)
+        [HttpPost("SetSubscriptionType")]
+        public async Task<IActionResult> SetSubscriptionType(SetSubscriptionTypeModelDto model)
         {
-            var result = await _adminService.AddTimeParsing(model);
+            var result = await _adminService.SetSubscriptionType(model);
             if (result.Success)
             {
                 return Ok();

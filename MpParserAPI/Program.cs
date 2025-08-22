@@ -7,6 +7,7 @@ using MpParserAPI.Controllers;
 using MpParserAPI.DbContext;
 using MpParserAPI.HostedServices;
 using MpParserAPI.Interfaces;
+using MpParserAPI.Middlewares;
 using MpParserAPI.Services;
 using MpParserAPI.Services.Admin;
 using Serilog;
@@ -19,7 +20,11 @@ builder.Services.AddDbContextFactory<ParserDbContext>(options =>
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
+    .WriteTo.Seq("http://localhost:5341")
     .CreateLogger();
+
+
+builder.Host.UseSerilog();
 
 builder.Services.AddScoped<IParser, ParserService>();
 builder.Services.AddScoped<INotify, NotifyService>();
@@ -30,6 +35,7 @@ builder.Services.AddScoped<IRedis, RedisService>();
 builder.Services.AddTransient<IGenerator, Generator>();
 builder.Services.AddScoped<IAdmin, AdminService>();
 builder.Services.AddScoped<ISpaceProxy, SpaceProxyService>();
+builder.Services.AddScoped<ISubscriptionManager, SubscriptionManager>();
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient();
 
@@ -37,32 +43,32 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHostedService<ParsersHostedService>();
 
-builder.WebHost.UseKestrel(options =>
-{
-    options.Listen(System.Net.IPAddress.Any, 9090);
-});
+//builder.WebHost.UseKestrel(options =>
+//{
+//    options.Listen(System.Net.IPAddress.Any, 9090);
+//});
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy
-            .WithOrigins("https://resortlehi.ru")
-            .AllowCredentials()
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
-});
 //builder.Services.AddCors(options =>
 //{
-//    options.AddPolicy("AllowAllOrigins", policy =>
+//    options.AddPolicy("AllowFrontend", policy =>
 //    {
-//        policy.WithOrigins("http://localhost:8000")
-//          .AllowCredentials()
-//          .AllowAnyHeader()
-//          .AllowAnyMethod();
+//        policy
+//            .WithOrigins("https://resortlehi.ru")
+//            .AllowCredentials()
+//            .AllowAnyHeader()
+//            .AllowAnyMethod();
 //    });
 //});
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins", policy =>
+    {
+        policy.WithOrigins("http://localhost:8000")
+          .AllowCredentials()
+          .AllowAnyHeader()
+          .AllowAnyMethod();
+    });
+});
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
@@ -96,6 +102,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 var app = builder.Build();
+app.UseMiddleware<TelegramExceptionMiddleware>();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -114,8 +121,8 @@ app.MapHub<ParserHub>("/parserHub");
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseCors("AllowFrontend"); 
-//app.UseCors("AllowAllOrigins");
+//app.UseCors("AllowFrontend"); 
+app.UseCors("AllowAllOrigins");
 app.MapControllers(); 
 
 app.Run();

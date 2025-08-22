@@ -5,7 +5,7 @@ namespace MpParserAPI.Interfaces
 {
     public interface IAdmin
     {
-        Task<OperationResult<object>> AddTimeParsing(AddTimeParsingModelDto modelDto);
+        Task<OperationResult<object>> SetSubscriptionType(SetSubscriptionTypeModelDto modelDto);
         Task<OperationResult<object>> DeleteUserAndParser(DeleteUserAndParserDto modelDto);
     }
 }
