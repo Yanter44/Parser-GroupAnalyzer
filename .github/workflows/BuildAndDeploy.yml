@@ -14,45 +14,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. Отладка структуры файлов
-      - name: Debug file structure
-        run: |
-          echo "=== Содержимое репозитория ==="
-          ls -la
-          echo "=== Поиск Dockerfile ==="
-          find . -name "Dockerfile" -type f
-          echo "=== Поиск .csproj файлов ==="
-          find . -name "*.csproj" -type f
-          echo "=== Содержимое папок ==="
-          ls -la MpParserAPI/ || echo "MpParserAPI folder not found"
-          ls -la MpBossParserNotification/ || echo "MpBossParserNotification folder not found"
-
-      # 3. Логин в Docker Hub
+      # 2. Логин в Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 4. Сборка и пуш образов (ПОКА ЗАКОММЕНТИРУЙТЕ)
-      # - name: Build and push parserochek
-      #   run: |
-      #     docker build -t yanterbrown44/parserochek:latest -f Dockerfile .
-      #     docker push yanterbrown44/parserochek:latest
+      # 3. Сборка и пуш API (парсер)
+      - name: Build and push parserochek
+        run: |
+          docker build -t yanterbrown44/parserochek:latest \
+            -f MpParserAPI/Dockerfile \
+            MpParserAPI/
+          docker push yanterbrown44/parserochek:latest
 
-      # - name: Build and push bot
-      #   run: |
-      #     docker build -t yanterbrown44/tgbotik:latest -f MpBossParserNotification/Dockerfile .
-      #     docker push yanterbrown44/tgbotik:latest
+      # 4. Сборка и пуш бота
+      - name: Build and push bot
+        run: |
+          docker build -t yanterbrown44/tgbotik:latest \
+            -f MpBossParserNotification/MpBossParserNotification/Dockerfile \
+            MpBossParserNotification/MpBossParserNotification/
+          docker push yanterbrown44/tgbotik:latest
 
-      # 5. Деплой на сервер (ПОКА ЗАКОММЕНТИРУЙТЕ)
-      # - name: Deploy to server
-      #   uses: appleboy/ssh-action@v0.1.10
-      #   with:
-      #     host: ${{ secrets.SERVER_HOST }}
-      #     username: ${{ secrets.SERVER_USER }}
-      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
-      #     script: |
-      #       cd /parserServer/
-      #       docker-compose pull
-      #       docker-compose up -d
+      # 5. Деплой на сервер через SSH
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /parserServer/
+            docker-compose pull
+            docker-compose up -d
