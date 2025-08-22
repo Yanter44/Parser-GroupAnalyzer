@@ -43,32 +43,32 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHostedService<ParsersHostedService>();
 
-//builder.WebHost.UseKestrel(options =>
-//{
-//    options.Listen(System.Net.IPAddress.Any, 9090);
-//});
+builder.WebHost.UseKestrel(options =>
+{
+    options.Listen(System.Net.IPAddress.Any, 9090);
+});
 
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy("AllowFrontend", policy =>
-//    {
-//        policy
-//            .WithOrigins("https://resortlehi.ru")
-//            .AllowCredentials()
-//            .AllowAnyHeader()
-//            .AllowAnyMethod();
-//    });
-//});
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAllOrigins", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:8000")
-          .AllowCredentials()
-          .AllowAnyHeader()
-          .AllowAnyMethod();
+        policy
+            .WithOrigins("https://resortlehi.ru")
+            .AllowCredentials()
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowAllOrigins", policy =>
+//    {
+//        policy.WithOrigins("http://localhost:8000")
+//          .AllowCredentials()
+//          .AllowAnyHeader()
+//          .AllowAnyMethod();
+//    });
+//});
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
@@ -121,8 +121,8 @@ app.MapHub<ParserHub>("/parserHub");
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
-//app.UseCors("AllowFrontend"); 
-app.UseCors("AllowAllOrigins");
+app.UseCors("AllowFrontend"); 
+//app.UseCors("AllowAllOrigins");
 app.MapControllers(); 
 
 app.Run();
