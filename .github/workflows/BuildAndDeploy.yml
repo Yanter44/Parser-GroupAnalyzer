@@ -3,7 +3,7 @@ name: Build and Deploy
 on:
   push:
     branches:
-      - master   # или твоя ветка
+      - master
 
 jobs:
   build-and-deploy:
@@ -21,10 +21,10 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 3. Сборка и пуш образов
+      # 3. Сборка и пуш образов - ИСПРАВЛЕННЫЕ ПУТИ
       - name: Build and push parserochek
         run: |
-          docker build -t yanterbrown44/parserochek:latest -f MpParserAPI/Dockerfile .
+          docker build -t yanterbrown44/parserochek:latest -f Dockerfile .  # ← Убрал MpParserAPI/
           docker push yanterbrown44/parserochek:latest
 
       - name: Build and push bot
