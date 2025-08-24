@@ -1,0 +1,213 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', sans-serif;
+     background-color: #0f1117;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+
+  .AuthContainer {
+    background: #0f1117;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgb(255 255 255 / 10%);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    color: white;
+    position: relative;
+    top: -10%;
+  }
+
+  .AuthTitle {
+    text-align: center;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: #ffffff;
+  }
+
+  .AuthField {
+    margin-bottom: 1rem;
+  }
+
+  .AuthLabel {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #ffffff;
+    font-weight: 500;
+  }
+
+  .AuthInput {
+    width: 90%;
+    padding: 0.75rem;
+    background: #000000;
+    border: 1px solid #cccccc;
+    border-radius: 8px;
+    font-size: 1rem;
+    text-align: center;
+    transition: border-color 0.3s;
+    color: white;
+  }
+
+  .AuthInput:focus {
+    border-color: #005ce6;
+    outline: none;
+  }
+
+  .AuthButton {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: #1a6fff;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  .AuthButton:hover {
+    background-color: #005ce6;
+  }
+
+  .hidden {
+  display: none;
+}
+
+.ConfirmCodeByNumber{
+ 
+    color: red;
+    display: flex;
+    margin-top: 10%;
+    justify-content: center;
+    gap: 5%;
+}
+.ConfirmCodeInputSingle{
+    color: black;
+    width: 10%;
+    text-align: center;
+    border-radius: 10px;
+    border: none;
+    height: 6vh;
+}
+.ConfirmCodeByNumberLabel{
+   color:white;
+}
+.ConfirmCodeForm{
+  display:none;
+}
+.ConfirmCodeButton{
+    width: 100%;
+    padding: 0.75rem;
+    background-color: #1a6fff;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-top: 10%;
+}
+.ConfirmTwoFactoPasswordForm{
+  display:none;
+}
+
+
+.ConfirmTwoFactoPasswordButton{
+     width: 100%;
+    padding: 0.75rem;
+    background-color: #1a6fff;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-top: 10%;
+}
+.TwoFactorPassswordInput {
+  width: 90%;
+  padding: 0.75rem;
+  background: #000000;
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  text-align: center;
+  transition: border-color 0.3s;
+  color: white;
+}
+.ConfirmTwoFactoPasswordFormLabel {
+  text-align: center;
+  font-size: 20px;
+  display: flex;
+  color: #ffffff;
+  justify-content: center;
+  margin-bottom: 50px;
+}
+
+input[type=number] {
+    -moz-appearance: textfield; 
+}
+
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none; 
+    margin: 0;
+}
+.ErrorPopup {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #ff4c4c;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 1rem;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease-in-out, top 0.4s ease-in-out;
+  z-index: 10;
+}
+
+.ErrorPopup.show {
+  opacity: 1;
+  pointer-events: auto;
+  top: -20px;
+}
+
+.ConfirmCodeButton:disabled {
+  background-color: #ccc;
+  color: #666;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.ResendCodeButton{
+    color: gray;
+    background-color: transparent;
+    margin-top: 20px;
+    border: none;
+    cursor: pointer;
+}
+.ResendCodeButton:hover{
+    color: white;
+ 
+}
+
+.ConfirmCodeButton.loading,
+.ConfirmTwoFactoPasswordButton.loading {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+.AuthButton.loading {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}

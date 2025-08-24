@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="CreateAdminPanelPage.css">
+  <title>Вход</title>
+  <link rel="icon" href="../mpParserLogo.ico" type="image/x-icon" />
+</head>
+<body>
+    <div class="ErrorPopup hidden" id="ErrorPopup">Произошла ошибка</div>
+  <div class="AuthContainer">
+    <div class="AuthTitle">Введите данные аккаунта для парсера</div>
+   <form class="AuthForm">
+      <div class="AuthField">
+        <label class="AuthLabel" for="Phone">Телефон</label>
+        <input class="AuthInput" type="tel" id="Phone" name="Phone"  />
+      </div>
+      <button type="submit" class="AuthButton">Войти</button>
+    </form>
+    
+    <form class="ConfirmCodeForm">
+      <label class="ConfirmCodeByNumberLabel">Ввдите код подтверждения</label>
+      <div class="ConfirmCodeByNumber">
+        <input class="ConfirmCodeInputSingle" type="text" maxlength="1" />
+        <input class="ConfirmCodeInputSingle" type="text" maxlength="1" />
+        <input class="ConfirmCodeInputSingle" type="text" maxlength="1" />
+        <input class="ConfirmCodeInputSingle" type="text" maxlength="1" />
+        <input class="ConfirmCodeInputSingle" type="text" maxlength="1" />
+      </div>
+    
+      <button type="submit" class="ConfirmCodeButton">Подтвердить</button>
+
+      <button type="button" onclick="ResendTwoFactorCode()" class="ResendCodeButton">Отправить код повторно</button>
+    </form>
+
+    <form class="ConfirmTwoFactoPasswordForm">
+      <label class="ConfirmTwoFactoPasswordFormLabel">Введите ваш двухфакторный пароль</label>
+      <div class="ConfirmTwoFactoPassword">
+        <input class="TwoFactorPassswordInput" type="text" id="TwoFactorPassword" name="TwoFactorPassword" required />
+      </div>
+      <button type="submit" class="ConfirmTwoFactoPasswordButton">Подтвердить</button>
+    </form>
+  </div>
+
+
+  <script src="CreateAdminPanelPage.js"></script>
+</body>
+</html>

@@ -121,8 +121,8 @@ app.MapHub<ParserHub>("/parserHub");
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseCors("AllowFrontend"); 
-//app.UseCors("AllowAllOrigins");
+//app.UseCors("AllowFrontend"); 
+app.UseCors("AllowAllOrigins");
 app.MapControllers(); 
 
 app.Run();

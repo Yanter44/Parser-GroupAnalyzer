@@ -1,0 +1,634 @@
+//Константы и глобальные переменные
+let connection;
+const API_BASE = "http://localhost:5154";
+let tickIntervalId = null;
+let currentModal = null;
+let tagifyInstance = null;
+
+const savedTags = {
+    keywords: [],
+    groups: []
+};
+//DomElements
+const AddGroupsButton = document.getElementById('AddGroupsButton');
+const AddKeywordsButton = document.getElementById('AddKeywordsButton');
+const closePanelBtn = document.getElementById('closePanelBtn');
+const overlay = document.getElementById('overlay');
+const parserTogglebutton = document.getElementById('parserToggleButton');
+const icon = parserTogglebutton.querySelector('img');
+const text = parserTogglebutton.querySelector('.ParserButtonText');
+
+//Подписки на события
+document.addEventListener("DOMContentLoaded", InitializePage);
+closePanelBtn.addEventListener('click', closeSidePanel);
+overlay.addEventListener('click', closeSidePanel);
+parserTogglebutton.addEventListener('click', ValidateInputsAndTryStartParsing);
+
+async function InitializePage(){
+ history.pushState(null, null, location.href);
+
+    window.addEventListener('popstate', function (event) {
+        location.replace("../Index.html");
+    });
+    try {
+        const response = await fetch(`${API_BASE}/ParserConfig/GetParserState`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+
+        if (response.status === 401) {
+            location.href = "../Index.html";
+            return;
+        }
+
+        const result = await response.json();
+        console.log(result);
+
+        const parserLogs = result.parserLogs || [];
+
+        if (parserLogs.length > 0) {
+            const noMessagesText = document.querySelector('.DataListDoNotHaveAnyMessagesText');
+            if (noMessagesText) {
+                noMessagesText.remove();
+            }
+
+            parserLogs.forEach(element => {
+                const container = document.querySelector(".DataList");
+                const item = document.createElement("li");
+
+                item.className = "UserParserDataItem";
+                const safeMessageText = escapeHtml(element.messageText);
+
+                item.innerHTML = `<img src="${element.profileImageUrl || 'https://via.placeholder.com/100'}" alt="User Image" class="ListItemImage">
+                                  <div class="NicknameHandler">${element.firstName}</div>
+                                  <div class="MessageText">${element.messageText}</div>
+                                  <div class="MessageTime">${element.messageTime}</div>
+                                  <button class="ThisIsSpamButton" onclick="ThisIsASpam('${safeMessageText}')">Это спам</button>
+                                  <button class="GoToTelegramButton" data-username="${element.username}">Перейти в телеграм</button>`;
+
+                container.prepend(item);
+
+                const GoToTelegramButton = item.querySelector('.GoToTelegramButton');
+                GoToTelegramButton.addEventListener('click', () => {
+                    const username = GoToTelegramButton.dataset.username;
+                    if (username) {
+                        window.open(`https://t.me/${username}`, '_blank');
+                    } else {
+                        alert('Telegram username не найден');
+                    }
+                });
+            });
+        }
+        savedTags.keywords = Array.isArray(result.parserDataResponceDto.parserkeywords) ? result.parserDataResponceDto.parserkeywords : [];
+        savedTags.groups = Array.isArray(result.parserDataResponceDto.targetGroups) ? result.parserDataResponceDto.targetGroups : [];
+        if (result && result.parserDataResponceDto) {
+            const {
+                profileImageUrl,
+                profileNickName,
+                isParsingStarted,
+                parserId,
+                parserPassword,
+                userGroupsList,
+                remainingParsingTimeHoursMinutes,
+                totalParsingTime
+            } = result.parserDataResponceDto;
+            window.userGroupsList = userGroupsList ?? [];
+             
+            const userImages = document.querySelectorAll(".UserImage");
+            userImages.forEach(img => {
+                img.src = profileImageUrl;
+            });
+
+            const telegramnicknameelement = document.querySelector(".ClientTelegramUserName");
+            telegramnicknameelement.textContent = `@${profileNickName}`;
+
+            const parserIdElement = document.querySelector(".ParserIdValueText");
+            const parserPasswordElement = document.querySelector(".PasswordValueText");
+            const totalparsingTimeElement = document.getElementsByClassName("TotalParsingTimeValueText")[0];
+            console.log(totalParsingTime);
+            console.log(remainingParsingTimeHoursMinutes);
+
+            if (parserIdElement) {
+                parserIdElement.textContent = parserId;
+            }
+            if (parserPasswordElement) {
+                parserPasswordElement.textContent = parserPassword;
+            }
+            totalparsingTimeElement.textContent = totalParsingTime; 
+            if (isParsingStarted) {
+                setInputsEnabled(false);
+
+                if (remainingParsingTimeHoursMinutes && remainingParsingTimeHoursMinutes !== "00:00:00") {
+                    let timeElem = document.querySelector(".RemainingTimeToStopParser");
+                                
+                        timeElem.style.marginLeft = "10px";
+                        timeElem.style.marginBottom = "10px";
+                        const btn = document.querySelector(".StartParserButton, .StopParserButton");
+                        if (btn && btn.parentNode) {
+                            btn.parentNode.insertBefore(timeElem, btn.nextSibling);
+                        }
+                    timeElem.textContent = `${remainingParsingTimeHoursMinutes}`;
+                } else {
+                    const timeElem = document.querySelector(".RemainingParsingTime");
+                    if (timeElem) timeElem.remove();
+                }
+                startTickTimer(remainingParsingTimeHoursMinutes);
+            } else {
+                setInputsEnabled(true);
+                const timeElem = document.querySelector(".RemainingParsingTime");
+                if (timeElem) timeElem.remove();   
+            }
+            
+            updateParserButton(isParsingStarted ? 'stop' : 'start');
+           
+            if (isParsingStarted) {
+                setInputsEnabled(false);
+                startSignalR();
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка при инициализации интерфейса:', error);
+    } finally {
+        document.getElementById("preloader").style.display = "none";
+        document.getElementById("mainContent").style.display = "block";
+    }
+}
+
+function CopyParserIdAndPassword(){
+    const parserId = document.querySelector(".ParserIdValueText").textContent.trim();
+    const password = document.querySelector(".PasswordValueText").textContent.trim();
+    const text = parserId + " " + password;
+    navigator.clipboard.writeText(text);
+}
+
+function openModal(type) {
+    currentModal = type;
+    document.getElementById("overlay").classList.add("active");
+    document.getElementById("tagifyModal").classList.add("active");
+
+    const label = document.getElementById("tagifyLabel");
+    const input = document.getElementById("tagifyInput");
+    const fileinput = document.getElementById("InputKeywordsFile");
+    const labelForKeywordss = document.getElementById("labelForKeywords");
+
+   if (type !== "keywords") {
+        fileinput.style.display = "none";
+        labelForKeywordss.style.display = "none";
+    } else {
+        fileinput.style.display = "block"; 
+        labelForKeywordss.style.display = "block"; 
+
+    }
+    label.textContent = type === 'keywords' ? "Ключевые слова" : "Группы";
+
+    if (tagifyInstance) {
+        try {
+            tagifyInstance.destroy();
+        } catch {}
+        tagifyInstance = null;
+    }
+    input.value = "";
+
+    tagifyInstance = new Tagify(input, {
+        whitelist: type === 'groups' ? window.userGroupsList ?? [] : [],
+        enforceWhitelist: type === 'groups',
+        duplicates: false,
+        delimiters: null,
+        dropdown: {
+            maxItems: 100,
+            enabled: 0,
+            closeOnSelect: false
+        }
+    });
+
+    tagifyInstance.on('change', e => {
+        const tags = tagifyInstance.value;
+        console.log("Текущие теги:", tags.map(t => t.value));
+        console.log("Количество тегов:", tags.length);
+
+        const tagCountElem = document.getElementById('tagCount');
+        if (tagCountElem) {
+            tagCountElem.textContent = `Выбрано тегов: ${tags.length}`;
+        }
+        updateTagCounts(tags.length);
+    });
+  
+    tagifyInstance.addTags(savedTags[type]);
+}
+
+
+function closeModal() {
+    document.getElementById("overlay").classList.remove("active");
+    document.getElementById("tagifyModal").classList.remove("active");
+    const tagslabel = document.getElementById("tagCount");
+    tagslabel.textContent = "";
+
+    if (tagifyInstance) tagifyInstance.destroy();
+    tagifyInstance = null;
+}
+
+//Теги
+function updateTagCounts(tagsLenght) {
+  const tagslabel = document.getElementById("tagCount");
+  tagslabel.textContent = `Выбранное кол-во тегов: ${tagsLenght}`
+}
+
+async function saveTags() {
+    const tags = tagifyInstance.value.map(item => item.value);
+    const combinedTags = [...tags];
+
+    if (currentModal === 'keywords') {
+        const fileInput = document.getElementById("InputKeywordsFile");
+        const file = fileInput.files[0];
+
+        if (file) {
+            try {
+                const text = await file.text();
+                const lines = text
+                    .split(/\r?\n/) 
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0);
+
+                const invalidLines = lines.filter(line => line.includes(',') || line.includes('\t') || line.includes(' '));
+                if (invalidLines.length > 0) {
+                    alert("Ошибка: файл должен содержать только одно слово или фразу на строку без пробелов, табов и запятых.");
+                    return;
+                }
+
+                combinedTags.push(...lines);
+            } catch (err) {
+                console.error("Ошибка при чтении файла:", err);
+                alert("Не удалось прочитать файл.");
+                return;
+            }
+        }
+
+        savedTags[currentModal] = combinedTags;
+
+        console.log(`keywords:`, combinedTags);
+
+        await fetch(`${API_BASE}/ParserConfig/AddParserKeywords`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(combinedTags)
+        });
+    } else if (currentModal === 'groups') {
+        savedTags[currentModal] = tags;
+
+        console.log(`groups:`, tags);
+
+        await fetch(`${API_BASE}/ParserConfig/AddGroupsToParser`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ groupNames: tags })
+        });
+    }
+    closeModal();
+}
+
+//Таймер
+function stopTickTimer() {
+    if (tickIntervalId !== null) {
+        clearInterval(tickIntervalId);
+        tickIntervalId = null;
+    }
+}
+
+function startTickTimer(timeString) {
+    if (timeString.includes('д')) {
+
+        return;
+    }
+    
+    stopTickTimer(); 
+    
+    const hoursMatch = timeString.match(/(\d+)ч/);
+    const minutesMatch = timeString.match(/(\d+)м/);
+    const secondsMatch = timeString.match(/(\d+)с/);
+    
+    let hours = hoursMatch ? parseInt(hoursMatch[1]) : 0;
+    let minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0;
+    let seconds = secondsMatch ? parseInt(secondsMatch[1]) : 0;
+    
+    let span = document.querySelector(".RemainingTimeToStopParser");
+    if (!span) {
+        span = document.createElement("span");
+        span.classList.add("RemainingTimeToStopParser");
+    }
+
+    span.style.marginLeft = "10px";
+    span.style.marginBottom = "10px";
+
+    const btn = document.querySelector(".StartParserButton, .StopParserButton");
+    if (btn && btn.parentNode) {
+        btn.parentNode.insertBefore(span, btn.nextSibling);
+    }
+
+    const formattedStart = 
+        String(hours).padStart(2, '0') + ":" +
+        String(minutes).padStart(2, '0') + ":" +
+        String(seconds).padStart(2, '0');
+    span.textContent = formattedStart;
+
+    tickIntervalId = setInterval(() => {
+        seconds--;
+        if (seconds < 0) {
+            seconds = 59;
+            minutes--;
+        }
+        if (minutes < 0) {
+            minutes = 59;
+            hours--; 
+        }
+
+        if (hours <= 0 && minutes <= 0 && seconds <= 0) {
+            clearInterval(tickIntervalId);
+            tickIntervalId = null;
+            span.textContent = "00:00:00";
+            return;
+        }
+
+        const formatted = 
+            String(hours).padStart(2, '0') + ":" +
+            String(minutes).padStart(2, '0') + ":" +
+            String(seconds).padStart(2, '0');
+        span.textContent = formatted;
+
+    }, 1000);
+}
+
+//Выход с аккаунта
+async function Logout() {
+    try {
+        await fetch(`${API_BASE}/ParserConfig/Logout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        });
+        window.location.href = "../Index.html";
+    } catch (error) {
+        console.error("Ошибка при выходе:", error);
+        alert("Произошла ошибка при выходе");
+    }
+}
+
+async function ValidateInputsAndTryStartParsing(){
+ const isStart = parserTogglebutton.classList.contains('StartParserButton');
+    if (isStart) {     
+        if (savedTags.keywords.length === 0) {
+            alert('Введите ключевые слова');
+            return;
+        }
+
+        if (savedTags.groups.length === 0) {
+            alert('Введите группы');
+            return;
+        }
+        setInputsEnabled(false);          
+        console.log("Пробуем начать парсинг");
+        updateParserButton('wait');
+        await startParsing();
+
+      
+    } else {
+        updateParserButton('wait');
+        await stopParsing();
+        const span = document.querySelector(".RemainingTimeToStopParser");
+        if (span) span.remove();
+        stopTickTimer();
+        setInputsEnabled(true);
+        updateParserButton('start');
+    }
+}
+
+
+function OpenSidePanel() 
+{
+    const sidePanel = document.getElementById('sidePanel');
+    EnableOverlayOverlay(true);
+    sidePanel.classList.remove('hidden');
+    sidePanel.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function EnableOverlayOverlay(overlayenabled) {
+    if (overlayenabled) {
+        const overlay = document.getElementById('overlay');
+        overlay.classList.remove('hidden');
+        overlay.classList.add('active');
+    }
+    else {
+        const overlay = document.getElementById('overlay');
+        overlay.classList.add('hidden');
+        overlay.classList.remove('active');
+    }
+}
+
+
+function closeSidePanel() {
+    const sidePanel = document.getElementById('sidePanel');
+
+    sidePanel.classList.remove('active');
+    EnableOverlayOverlay(false);
+    setTimeout(() => {
+        sidePanel.classList.add('hidden');
+        overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+    }, 300);
+}
+
+
+async function startParsing() {
+    parserTogglebutton.disabled = true;
+    try {
+
+        await fetch(`${API_BASE}/ParserConfig/StartParsing`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        const remainTimeResponse = await fetch(`${API_BASE}/ParserConfig/GetParserRemainTime`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        });
+        console.log(remainTimeResponse);
+        if (!remainTimeResponse.ok) {
+            const errorText = await remainTimeResponse.text();
+            throw new Error("Ошибка получения оставшегося времени: " + errorText);
+        }
+        
+        const remainTimeJson = await remainTimeResponse.json();
+        const remainTime = remainTimeJson.remainingParsingTimeHoursMinutes;
+        console.log(remainTimeJson);
+        startTickTimer(remainTime);
+        startSignalR();
+
+        updateParserButton('stop');
+
+    } catch (error) {
+        console.error('Ошибка при запуске парсинга:', error);
+        updateParserButton('start');
+        alert('Ошибка при запуске парсинга: ' + error.message);
+    
+    } finally {
+        parserTogglebutton.disabled = false;
+        setInputsEnabled(true);
+    }
+}
+
+async function stopParsing() {
+    try {
+        await fetch(`${API_BASE}/ParserConfig/StopParsing`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        parserTogglebutton.classList.remove('StopParserButton');
+        parserTogglebutton.classList.add('StartParserButton');
+        icon.src = 'Assets/StartParsingImage.png';
+        icon.alt = 'Старт';
+        text.textContent = 'Начать парсинг';
+        setInputsEnabled(true);
+    } catch (error) {
+        console.error('Ошибка при остановке парсинга:', error);
+        alert('Ошибка при остановке парсинга');
+    }
+}
+
+function startSignalR() {
+    if (connection && connection.state === "Connected") {
+        console.log("SignalR уже подключен");
+        return;
+    }
+    connection = new signalR.HubConnectionBuilder()
+        .withUrl(`${API_BASE}/parserHub`, { withCredentials: true })
+        .build();
+
+    connection.on("ReceiveMessage", (data) => {
+        console.log("Получено сообщение от SignalR:", data);
+        addMessageToList(data);
+    });
+    connection.on("ParsingIsStoped", () => {
+        setInputsEnabled(true);
+        updateParserButton('start');
+    });
+    connection.on("ParserChangedProxy", (remainingTime) => {
+        updateParserButton('start'); 
+        startTickTimer(remainingTime); 
+        setInputsEnabled(false); 
+    });
+
+    connection.start()
+        .then(() => console.log("SignalR подключен"))
+        .catch(err => console.error("Ошибка подключения SignalR:", err));
+}
+
+
+function addMessageToList(data) {
+    const container = document.querySelector(".DataList");
+    const item = document.createElement("li");
+    const noMessagesText = document.querySelector('.DataListDoNotHaveAnyMessagesText');
+    if (noMessagesText) {
+        noMessagesText.remove();
+    }
+
+
+    item.className = "UserParserDataItem";
+    const safeMessageText = escapeHtml(data.messageText);
+    item.innerHTML = `
+        <img src="${data.profileImageUrl || 'https://via.placeholder.com/100'}" alt="User Image" class="ListItemImage">
+        <div class="NicknameHandler">${data.name}</div>
+        <div class="MessageText">${data.messageText}</div>
+        <div class="MessageTime">${data.messageTime}</div>
+        <button class="ThisIsSpamButton" onclick="ThisIsASpam('${safeMessageText}')">Это спам</button>
+        <button class="GoToTelegramButton" data-username="${data.username}">Перейти в телеграм</button> `;
+
+    container.prepend(item);
+
+    const GoToTelegramButton = item.querySelector('.GoToTelegramButton');
+    GoToTelegramButton.addEventListener('click', () => {
+        const username = GoToTelegramButton.dataset.username;
+        if (username) {
+            window.open(`https://t.me/${username}`, '_blank');
+        } else {
+            alert('Telegram username не найден');
+        }
+    });
+}
+
+async function ThisIsASpam(spamMessage) {
+    try {
+        const response = await fetch(`${API_BASE}/ParserConfig/AddNewSpamMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                Message: spamMessage
+            })
+        });
+
+        const result = await response.json();
+        console.log('Success:', result);
+        await RemoveAllSpamMessages(spamMessage);
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Ошибка при добавлении в спам');
+    }
+}
+async function RemoveAllSpamMessages(spamMessage) {
+    const items = document.querySelectorAll('.UserParserDataItem');
+
+    items.forEach(item => {
+        const message = item.querySelector('.MessageText')?.textContent;
+        if (message === `${spamMessage}`) {
+            item.remove();
+        }
+    });
+}
+function updateParserButton(state) {
+parserTogglebutton.classList.remove('StartParserButton', 'StopParserButton', 'WaitParserButton');    
+    switch(state) {
+        case 'start':
+            parserTogglebutton.classList.add('StartParserButton');
+            icon.src = 'Assets/StartParsingImage.png';
+            icon.alt = 'Старт';
+            text.textContent = 'Начать парсинг';
+            break;
+            
+        case 'stop':
+            parserTogglebutton.classList.add('StopParserButton');
+            icon.src = 'Assets/StopParsingImage.png';
+            icon.alt = 'Стоп';
+            text.textContent = 'Остановить парсинг';
+            break;
+            
+        case 'wait':
+            parserTogglebutton.classList.add('WaitParserButton');
+            icon.src = 'Assets/Loading.gif';
+            icon.alt = 'Ожидание';
+            text.textContent = 'Ожидание...';
+            break;
+    }
+}
+
+function setInputsEnabled(enabled) {
+    const inputs = [
+        AddGroupsButton,
+        AddKeywordsButton
+    ];
+    inputs.forEach(input => {
+        input.disabled = !enabled;
+        input.style.cursor = enabled ? 'pointer' : 'not-allowed';
+    });
+}
+
+function escapeHtml(str) {
+    return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+}

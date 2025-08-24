@@ -22,7 +22,6 @@ namespace MpParserAPI.Controllers
                 "Клиент {ConnectionId} добавлен в группу {ParserId}",
                 Context.ConnectionId, parserId);
             }
-
             await base.OnConnectedAsync();
         }
 

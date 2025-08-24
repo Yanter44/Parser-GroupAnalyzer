@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MP BOSS PARSER</title>
+    <link rel="icon" href="mpParserLogo.ico" type="image/x-icon" />
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f1117;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .mainContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 1000px;
+            margin: 20px auto;
+        }
+
+        .panelsWrapper {
+           display: flex;
+           flex-direction: column;
+           width: 100%;
+           align-items: center;
+        }
+
+        @media (min-width: 992px) {
+            .panelsWrapper {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+
+        .leftPanel {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        @media (min-width: 992px) {
+           .leftPanel {
+        text-align: left;
+        align-items: flex-end;
+        margin-bottom: 0;
+        margin-right: 60px;
+        flex: 1;
+        max-width: 400px;
+    }
+        }
+
+        .welcomeText {
+            font-size: clamp(24px, 5vw, 32px);
+            font-weight: 600;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+
+        .highlightText {
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .buttonGroup {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        @media (min-width: 992px) {
+            .buttonGroup {
+                width: auto;
+            }
+        }
+
+        .primaryButton, .secondaryButton {
+            padding: 14px 24px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        @media (min-width: 992px) {
+            .primaryButton, .secondaryButton {
+                width: 280px;
+            }
+        }
+
+        .primaryButton {
+            background-color: #1a6fff;
+            color: white;
+        }
+
+        .primaryButton:hover {
+            background-color: #005ce6;
+            transform: scale(1.05);
+        }
+
+        .secondaryButton {
+            background-color: #2b2f3a;
+            color: white;
+        }
+
+        .secondaryButton:hover {
+            background-color: #3a3f4a;
+            transform: scale(1.05);
+        }
+
+        .divider {
+            height: 1px;
+            width: 80%;
+            background-color: rgba(255, 255, 255, 0.2);
+            margin: 20px auto;
+        }
+
+        @media (min-width: 992px) {
+            .divider {
+                width: 1px;
+                height: 200px;
+                margin: 0 60px;
+            }
+        }
+
+        .rightPanel {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #b0b3b8;
+            font-size: clamp(14px, 3vw, 16px);
+            line-height: 1.6;
+            text-align: center;
+            padding: 20px 0;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        @media (min-width: 992px) {
+            .rightPanel {
+                text-align: left;
+                justify-content: flex-start;
+                padding: 0;
+                align-items: flex-start;
+            }
+        }
+
+        .infoText {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="mainContainer">
+        <div class="panelsWrapper">
+            <div class="leftPanel">
+                <h1 class="welcomeText">Добро пожаловать<br>в <span class="highlightText">MP BOSS PARSER</span></h1>
+                <div class="buttonGroup">
+                    <button class="primaryButton">Вход для нового аккаунта</button>
+                    <button class="secondaryButton">Войти по ключу</button>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <div class="rightPanel">
+                <p class="infoText">Создайте новое подключение<br>Или возобновите сессию,<br>используя id-ключ</p>
+            </div>
+        </div>
+    </div>
+    <script src="MainPage.js"></script>
+</body>
+</html>

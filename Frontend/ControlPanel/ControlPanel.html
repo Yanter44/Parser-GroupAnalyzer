@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="ControlPanel.css" />
+  <title>Mp Parser</title>
+  <link rel="icon" href="../mpParserLogo.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css">
+</head>
+
+<body>
+  <div id="preloader">
+    <img src="./Assets/Loading.gif" alt="Loading..." class="preloaderGif" />
+    <span class="LoadingText">Загрузка...</span>
+  </div>
+
+  <div id="mainContent" style="display: none;">
+    <header class="HeaderPanelContainer">
+      <div class="HeaderLeft">
+        <div class="UserImageContainer" onclick="OpenSidePanel()">
+          <img src="https://avatars.mds.yandex.net/i?id=2a00000179e880a27bf4aae066036d3be8ba-5032983-images-thumbs&n=13"
+            alt="User Avatar" class="UserImage" />
+        </div>
+      </div>
+
+      <div class="HeaderCenter">
+        <span class="MainHeaderTitleText">MP PARSER</span>
+      </div>
+
+    </header>
+
+<section class="MainContentContainerHeaderButtons">
+  <button id="parserToggleButton" class="StartParserButton">
+    <img src="Assets/StartParsingImage.png" alt="Старт" class="StartParserIcon" />
+    <span class="ParserButtonText">Начать парсинг</span>
+  </button>
+  <span class="RemainingTimeToStopParser"></span>
+
+  <div class="FormGroupsContainer">
+    <div class="FormGroup">
+      <label for="keywordInput">Ключевые слова:</label>
+      <button class="AddTagButton" id="AddKeywordsButton" onclick="openModal('keywords')">Добавить ключевые слова</button>
+    </div>
+
+    <div class="FormGroup">
+      <label for="groupInput">Группы:</label>
+      <button class="AddTagButton"  id="AddGroupsButton" onclick="openModal('groups')">Добавить группы</button>
+    </div>
+  </div>
+</section>
+
+ <section class="MainMessagesContainer">
+        <div class="DataListContainer">
+          <span class="DataListDoNotHaveAnyMessagesText">В данный момент записей нет</span>
+          <ul class="DataList">
+  
+          </ul>
+        </div>
+ </section>   
+</div>
+
+<div id="overlayModal" onclick="closeModal()"></div>
+<div id="tagifyModal">
+  <div class="modalContent" onclick="event.stopPropagation();">
+    <button class="closeButton" onclick="closeModal()">&times;</button>
+    <label id="tagifyLabel"></label>
+    <label id="tagCount"></label>
+    <label id="labelForKeywords">Укажите файл с ключевыми словами, или введите их вручную</label>
+    <input type="file" id="InputKeywordsFile" accept=".txt"/>
+    <input id="tagifyInput" placeholder="" />
+    <button class="SaveTagsButton" onclick="saveTags()">Сохранить</button>
+  </div>
+</div>
+
+<div id="overlay" class="overlay hidden"></div>
+
+<section class="InformationAboutClientPanel hidden" id="sidePanel">
+  <div class="InfoPanelContent">
+    <button class="closeButton" id="closePanelBtn">×</button>
+    
+    <div class="PanelContent">
+      <div class="UserImageContainer">
+        <img src="..." alt="User Avatar" class="UserImage" />
+        <span class="ClientTelegramUserName">dfsafas</span>
+      </div> 
+      <div class="vertical-separator"></div>
+
+      <div class="ParserIdContainer">
+        <div class="ParserHeaderContainerContainer">
+            <span class="ParserIdName">Ваш ParserId</span>
+            <img src="./Assets/ParserIdentificatorImage.png"/>
+        </div>
+        <span class="ParserIdValueText"></span>
+      </div>
+      <div class="vertical-separator"></div>
+
+      <div class="PasswordParserContainer">
+        <div class="PasswordHeaderContainerContainer">
+          <span class="PasswordNameText">Ваш Пароль</span>
+          <img src="./Assets/PasswordImage.png" />
+        </div>
+        <span class="PasswordValueText"></span>
+      </div>
+      <div class="vertical-separator"></div>
+
+      <div class="TotalParsingTimeContainer">
+        <div class="TotalParsingTimeContainerContainer">
+          <span class="TotalParsingTimeNameText">Ваше общее время парсинга</span>
+          <img src="./Assets/Timer.png"/>
+        </div>
+        <span class="TotalParsingTimeValueText"></span>
+
+      </div>
+      
+      <div class="vertical-separator"></div>
+      <div class="CopyButtonDiv">
+          <button class="CopyAuthButton" onclick="CopyParserIdAndPassword()">Копировать логин и пароль</button>
+      </div>    
+    </div>
+
+    <div class="vertical-separator"></div>
+   
+
+    <div class="LogoutContainer" onclick="Logout()">
+      <span class="ClientTelegramUserName">Выйти из аккаунта</span>
+      <img src="Assets/LogoutImage.png" class="LogoutImage"/>
+    </div>
+  </div>
+</section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+  <script src="ControlPanel.js"></script>
+</body>
+</html>
