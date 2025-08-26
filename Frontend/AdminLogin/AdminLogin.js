@@ -1,5 +1,9 @@
 //константы и переменные
-const API_BASE = "/Parser/api";
+import { config } from '../Config.js';
+
+console.log(config.API_BASE); 
+console.log(config.DefaultStartFileLocation);
+
 const token = localStorage.getItem("jwtToken");
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -7,13 +11,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (token && token.trim() !== "") {
         try {
-            const response = await fetch(`${API_BASE}/AdminAuth/ValidateToken`, {
+            const response = await fetch(`${config.API_BASE}/AdminAuth/ValidateToken`, {
                 method: 'GET',
                 headers: { "Authorization": token }
             });
 
             if (response.ok) {
-                window.location.href = "/Parser/AdminPage/AdminPage.html";
+                window.location.href = `${config.DefaultStartFileLocation}/AdminPage/AdminPage.html`;
             } else {
                 localStorage.removeItem("jwtToken");
             }
@@ -29,7 +33,7 @@ async function Login() {
     const password = document.getElementById("PasswordInput").value;
     console.log(login + password);
     try {
-        const response = await fetch(`${API_BASE}/AdminAuth/Login`, {
+        const response = await fetch(`${config.API_BASE}/AdminAuth/Login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -40,7 +44,7 @@ async function Login() {
         if (response.ok) {
             const token = await response.text();
             localStorage.setItem("jwtToken", token); 
-            window.location.href = "/Parser/AdminPage/AdminPage.html";
+            window.location.href = `${config.DefaultStartFileLocation}/AdminPage/AdminPage.html`;
         } else {
             alert("Неверный логин или пароль!");
         }

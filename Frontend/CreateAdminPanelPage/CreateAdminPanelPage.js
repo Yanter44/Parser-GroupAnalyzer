@@ -1,4 +1,8 @@
-const API_BASE = "/Parser/api";
+import { config } from '../Config.js';
+
+console.log(config.API_BASE); 
+console.log(config.DefaultStartFileLocation);
+
 
 const ErrorCodes = {
     NEED_VERIFICATION_CODE: "NEED_VERIFICATION_CODE",
@@ -59,7 +63,7 @@ authForm?.addEventListener("submit", async e => {
         submitButton.textContent = "Ожидание...";
         submitButton.classList.add("loading");
 
-        const res = await fetch(`${API_BASE}/Auth/LoginAndStartParser`, {
+        const res = await fetch(`${config.API_BASE}/Auth/LoginAndStartParser`, {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
@@ -74,7 +78,7 @@ authForm?.addEventListener("submit", async e => {
                 confirmCodeForm.style.display = "block";
                 confirmTwoFactoPasswordForm.style.display = "none";
             } else {
-                window.location.href = "/Parser/ControlPanel/ControlPanel.html";
+                window.location.href = `{config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
             }
         } else {
             showError(result.message || "Ошибка при входе.");
@@ -108,7 +112,7 @@ confirmCodeForm?.addEventListener("submit", async e => {
     console.log(`отправляю код подтверждения ${Number(code)}`);
     
     try {
-        const res = await fetch(`${API_BASE}/Auth/SendVerificationCodeFromTelegram`, {
+        const res = await fetch(`${config.API_BASE}/Auth/SendVerificationCodeFromTelegram`, {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
@@ -118,7 +122,7 @@ confirmCodeForm?.addEventListener("submit", async e => {
         const result = await res.json();
         console.log(result);
       if (res.ok) {
-          window.location.href = "/Parser/ControlPanel/ControlPanel.html";
+        window.location.href = `{config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
       } else {
         if (result.message) {
           if (result.message.includes(ErrorCodes.NEED_TWO_FACTOR_PASSWORD)) {
@@ -166,7 +170,7 @@ confirmTwoFactoPasswordForm?.addEventListener("submit", async e => {
   submitButton.disabled = true;
 
   try {
-    const res = await fetch(`${API_BASE}/Auth/SendATwoFactorPassword`, {
+    const res = await fetch(`${config.API_BASE}/Auth/SendATwoFactorPassword`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -176,7 +180,7 @@ confirmTwoFactoPasswordForm?.addEventListener("submit", async e => {
     const result = await res.json();
 
     if (res.ok) {
-        window.location.href = "/Parser/ControlPanel/ControlPanel.html";
+      window.location.href = `{config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
     } else {
       if (result.message.includes(ErrorCodes.INVALID_TWO_FACTOR_PASSWORD)) {
         twoFactorPasswordInput.value = "";
@@ -206,7 +210,7 @@ async function ResendTwoFactorCode() {
         resendButton.disabled = true;
         resendButton.textContent = 'Отправка...';
         
-        const response = await fetch(`${API_BASE}/Auth/ResendVerificationCode`, {
+        const response = await fetch(`${config.API_BASE}/Auth/ResendVerificationCode`, {
             method: 'POST',
             credentials: 'include',
             headers: {

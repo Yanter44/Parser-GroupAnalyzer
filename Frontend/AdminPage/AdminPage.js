@@ -1,5 +1,9 @@
 //Константы
-const API_BASE = "/Parser/api";
+import { config } from '../Config.js';
+
+console.log(config.API_BASE); 
+console.log(config.DefaultStartFileLocation);
+
 const usersTableBody = document.getElementById('usersTableBody');
 const searchInput = document.getElementById('searchInput');
 const SetSubscriptionTypePanel = document.getElementsByClassName('SetSubscriptionTypePanel')[0];
@@ -12,22 +16,22 @@ document.addEventListener("DOMContentLoaded", InitializePage);
 
 async function InitializePage(){
     if (!token) {
-        window.location.href = "/Parser/AdminLogin/AdminLogin.html";
+        window.location.href = `${config.DefaultStartFileLocation}/AdminLogin/AdminLogin.html`;
         return;
     }
     try {
-        const validateResponse = await fetch(`${API_BASE}/AdminAuth/ValidateToken`, {
+        const validateResponse = await fetch(`${config.API_BASE}/AdminAuth/ValidateToken`, {
             method: 'GET',
             headers: { "Authorization": token }
         });
 
         if (!validateResponse.ok) {
             localStorage.removeItem("jwtToken");
-            window.location.href = "/Parser/AdminLogin/AdminLogin.html";
+            window.location.href = `${config.DefaultStartFileLocation}/AdminLogin/AdminLogin.html`;
             return;
         }
 
-    const response = await fetch(`${API_BASE}/Admin/GetAllParsers`, {
+    const response = await fetch(`${config.API_BASE}/Admin/GetAllParsers`, {
       method: 'GET',
       headers: {"Authorization": token}
     });
@@ -112,7 +116,7 @@ async function SetNewProxy() {
             ProxyAdress: proxyInput.value 
         };
         
-        const response = await fetch(`${API_BASE}/Admin/SetNewProxy`, {
+        const response = await fetch(`${config.API_BASE}/Admin/SetNewProxy`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -161,7 +165,7 @@ async function ConfirmSubscriptionType() {
             DaysSubscription: daysSubscription
         };
         
-        const response = await fetch(`${API_BASE}/Admin/SetSubscriptionType`, {
+        const response = await fetch(`${config.API_BASE}/Admin/SetSubscriptionType`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -199,7 +203,7 @@ async function DeleteUser(buttonElement) {
     }
 
     try {
-        const response = await fetch(`${API_BASE}/Admin/DeleteUserAndParser`, {
+        const response = await fetch(`${config.API_BASE}/Admin/DeleteUserAndParser`, {
             method: 'DELETE',
              headers: {
                 'Content-Type': 'application/json',

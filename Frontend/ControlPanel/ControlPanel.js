@@ -1,9 +1,13 @@
 //Константы и глобальные переменные
 let connection;
-const API_BASE = "/Parser/api";
 let tickIntervalId = null;
 let currentModal = null;
 let tagifyInstance = null;
+
+import { config } from '../Config.js';
+
+console.log(config.API_BASE); 
+console.log(config.DefaultStartFileLocation);
 
 const savedTags = {
     keywords: [],
@@ -28,16 +32,16 @@ async function InitializePage(){
  history.pushState(null, null, location.href);
 
     window.addEventListener('popstate', function (event) {
-        location.replace("/Parser/Index.html");
+        location.replace(`${config.DefaultStartFileLocation}/Index.html`);
     });
     try {
-        const response = await fetch(`${API_BASE}/ParserConfig/GetParserState`, {
+        const response = await fetch(`${config.API_BASE}/ParserConfig/GetParserState`, {
             method: 'GET',
             credentials: 'include'
         });
 
         if (response.status === 401) {
-            location.href = "/Parser/Index.html";
+            location.href = `${config.DefaultStartFileLocation}/Index.html`;
             return;
         }
 
@@ -267,7 +271,7 @@ async function saveTags() {
 
         console.log(`keywords:`, combinedTags);
 
-        await fetch(`${API_BASE}/ParserConfig/AddParserKeywords`, {
+        await fetch(`${config.API_BASE}/ParserConfig/AddParserKeywords`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -280,7 +284,7 @@ async function saveTags() {
 
         console.log(`groups:`, tags);
 
-        await fetch(`${API_BASE}/ParserConfig/AddGroupsToParser`, {
+        await fetch(`${config.API_BASE}/ParserConfig/AddGroupsToParser`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -366,12 +370,12 @@ function startTickTimer(timeString) {
 //Выход с аккаунта
 async function Logout() {
     try {
-        await fetch(`${API_BASE}/ParserConfig/Logout`, {
+        await fetch(`${config.API_BASE}/ParserConfig/Logout`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include'
         });
-        window.location.href = "/Parser/Index.html";
+        window.location.href = `${config.DefaultStartFileLocation}/Index.html`;
     } catch (error) {
         console.error("Ошибка при выходе:", error);
         alert("Произошла ошибка при выходе");
@@ -448,12 +452,12 @@ async function startParsing() {
     parserTogglebutton.disabled = true;
     try {
 
-        await fetch(`${API_BASE}/ParserConfig/StartParsing`, {
+        await fetch(`${config.API_BASE}/ParserConfig/StartParsing`, {
             method: 'POST',
             credentials: 'include'
         });
 
-        const remainTimeResponse = await fetch(`${API_BASE}/ParserConfig/GetParserRemainTime`, {
+        const remainTimeResponse = await fetch(`${config.API_BASE}/ParserConfig/GetParserRemainTime`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include'
@@ -485,7 +489,7 @@ async function startParsing() {
 
 async function stopParsing() {
     try {
-        await fetch(`${API_BASE}/ParserConfig/StopParsing`, {
+        await fetch(`${config.API_BASE}/ParserConfig/StopParsing`, {
             method: 'POST',
             credentials: 'include'
         });
@@ -508,7 +512,7 @@ function startSignalR() {
         return;
     }
     connection = new signalR.HubConnectionBuilder()
-        .withUrl(`${API_BASE}/parserHub`, { withCredentials: true })
+        .withUrl(`${config.API_BASE}/parserHub`, { withCredentials: true })
         .build();
 
     connection.on("ReceiveMessage", (data) => {
@@ -565,7 +569,7 @@ function addMessageToList(data) {
 
 async function ThisIsASpam(spamMessage) {
     try {
-        const response = await fetch(`${API_BASE}/ParserConfig/AddNewSpamMessage`, {
+        const response = await fetch(`${config.API_BASE}/ParserConfig/AddNewSpamMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

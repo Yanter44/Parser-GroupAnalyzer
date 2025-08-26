@@ -1,4 +1,7 @@
-const API_BASE = "http://localhost:5154";
+import { config } from '../Config.js';
+
+console.log(config.API_BASE); 
+console.log(config.DefaultStartFileLocation);
 
 document.addEventListener("DOMContentLoaded", () => {
     const LoginForm = document.querySelector(".LoginForm");
@@ -15,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
               return;
         }
         try {
-            const res = await fetch(`${API_BASE}/Auth/EnterToSessionByKeyAndPassword`, {
+            const res = await fetch(`${config.API_BASE}/Auth/EnterToSessionByKeyAndPassword`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
@@ -23,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             if (res.ok) {
-                location.href = "/Parser/ControlPanel/ControlPanel.html";
+                location.href = `{config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
             } else {
                 const errorMessage = await res.text();
                 
