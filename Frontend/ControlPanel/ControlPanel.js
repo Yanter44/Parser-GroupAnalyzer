@@ -4,8 +4,6 @@ let tickIntervalId = null;
 let currentModal = null;
 let tagifyInstance = null;
 
-import { config } from '../Config.js';
-
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
 

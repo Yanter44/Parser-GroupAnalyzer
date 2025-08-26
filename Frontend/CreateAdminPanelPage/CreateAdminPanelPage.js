@@ -1,8 +1,6 @@
-import { config } from '../Config.js';
 
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
-
 
 const ErrorCodes = {
     NEED_VERIFICATION_CODE: "NEED_VERIFICATION_CODE",
