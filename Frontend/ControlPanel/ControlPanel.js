@@ -1,6 +1,6 @@
 //Константы и глобальные переменные
 let connection;
-const API_BASE = "http://localhost:5154";
+const API_BASE = "/Parser/api";
 let tickIntervalId = null;
 let currentModal = null;
 let tagifyInstance = null;
@@ -28,7 +28,7 @@ async function InitializePage(){
  history.pushState(null, null, location.href);
 
     window.addEventListener('popstate', function (event) {
-        location.replace("../Index.html");
+        location.replace("/Parser/Index.html");
     });
     try {
         const response = await fetch(`${API_BASE}/ParserConfig/GetParserState`, {
@@ -37,7 +37,7 @@ async function InitializePage(){
         });
 
         if (response.status === 401) {
-            location.href = "../Index.html";
+            location.href = "/Parser/Index.html";
             return;
         }
 
@@ -371,7 +371,7 @@ async function Logout() {
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include'
         });
-        window.location.href = "../Index.html";
+        window.location.href = "/Parser/Index.html";
     } catch (error) {
         console.error("Ошибка при выходе:", error);
         alert("Произошла ошибка при выходе");

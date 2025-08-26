@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:5154";
+const API_BASE = "/Parser/api";
 
 const ErrorCodes = {
     NEED_VERIFICATION_CODE: "NEED_VERIFICATION_CODE",
@@ -74,7 +74,7 @@ authForm?.addEventListener("submit", async e => {
                 confirmCodeForm.style.display = "block";
                 confirmTwoFactoPasswordForm.style.display = "none";
             } else {
-                window.location.href = "../ControlPanel/ControlPanel.html";
+                window.location.href = "/Parser/ControlPanel/ControlPanel.html";
             }
         } else {
             showError(result.message || "Ошибка при входе.");
@@ -118,7 +118,7 @@ confirmCodeForm?.addEventListener("submit", async e => {
         const result = await res.json();
         console.log(result);
       if (res.ok) {
-        window.location.href = "../ControlPanel/ControlPanel.html";
+          window.location.href = "/Parser/ControlPanel/ControlPanel.html";
       } else {
         if (result.message) {
           if (result.message.includes(ErrorCodes.NEED_TWO_FACTOR_PASSWORD)) {
@@ -176,7 +176,7 @@ confirmTwoFactoPasswordForm?.addEventListener("submit", async e => {
     const result = await res.json();
 
     if (res.ok) {
-      window.location.href = "../ControlPanel/ControlPanel.html";
+        window.location.href = "/Parser/ControlPanel/ControlPanel.html";
     } else {
       if (result.message.includes(ErrorCodes.INVALID_TWO_FACTOR_PASSWORD)) {
         twoFactorPasswordInput.value = "";

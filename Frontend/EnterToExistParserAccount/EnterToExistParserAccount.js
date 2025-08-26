@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             if (res.ok) {
-                location.href = "../ControlPanel/ControlPanel.html";
+                location.href = "/Parser/ControlPanel/ControlPanel.html";
             } else {
                 const errorMessage = await res.text();
                 

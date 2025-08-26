@@ -1,5 +1,5 @@
 //Константы
-const API_BASE = "http://localhost:5154";
+const API_BASE = "/Parser/api";
 const usersTableBody = document.getElementById('usersTableBody');
 const searchInput = document.getElementById('searchInput');
 const SetSubscriptionTypePanel = document.getElementsByClassName('SetSubscriptionTypePanel')[0];
@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", InitializePage);
 
 async function InitializePage(){
     if (!token) {
-        window.location.href = "../AdminLogin/AdminLogin.html";
+        window.location.href = "/Parser/AdminLogin/AdminLogin.html";
         return;
     }
     try {
@@ -23,7 +23,7 @@ async function InitializePage(){
 
         if (!validateResponse.ok) {
             localStorage.removeItem("jwtToken");
-            window.location.href = "../AdminLogin/AdminLogin.html";
+            window.location.href = "/Parser/AdminLogin/AdminLogin.html";
             return;
         }
 

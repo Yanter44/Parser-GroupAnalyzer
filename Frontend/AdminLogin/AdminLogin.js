@@ -1,5 +1,5 @@
 //константы и переменные
-const API_BASE = "http://localhost:5154";
+const API_BASE = "/Parser/api";
 const token = localStorage.getItem("jwtToken");
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
 
             if (response.ok) {
-                window.location.href = "../AdminPage/AdminPage.html";
+                window.location.href = "/Parser/AdminPage/AdminPage.html";
             } else {
                 localStorage.removeItem("jwtToken");
             }
@@ -40,7 +40,7 @@ async function Login() {
         if (response.ok) {
             const token = await response.text();
             localStorage.setItem("jwtToken", token); 
-            window.location.href = "../AdminPage/AdminPage.html";
+            window.location.href = "/Parser/AdminPage/AdminPage.html";
         } else {
             alert("Неверный логин или пароль!");
         }
