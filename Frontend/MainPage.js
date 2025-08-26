@@ -1,4 +1,3 @@
-import { config } from './Config.js';
 
 var primarybutton = document.getElementsByClassName('primaryButton')[0];
 var secondaryButton = document.getElementsByClassName('secondaryButton')[0];
