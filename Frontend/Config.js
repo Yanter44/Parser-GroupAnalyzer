@@ -6,3 +6,4 @@ export const config = {
 
 //export const API_BASE = "http://localhost:5154"; // или "/Parser/api" для сервера
 //export const DefaultStartFileLocation = "../";   // или "/Parser" для сервера
+//пиздец
