@@ -23,6 +23,7 @@ namespace MpParserAPI.Admin
             _spaceproxyService = spaceproxyService;
             _dbContextFactory = dbContextFactory;
         }
+
         [Authorize]
         [HttpGet("GetAllParsers")]
         public async Task<IActionResult> GetAllParsers()

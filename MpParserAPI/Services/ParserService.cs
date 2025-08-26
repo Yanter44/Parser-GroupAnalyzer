@@ -173,7 +173,7 @@ public class ParserService : IParser
                                             messageLink = $"https://t.me/{groupUsername}/{msg.id}";
                                         }
 
-                                      //  await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"Пользователь: {existingTelegramUser.FirstName}\n\nСообщение: {msg.message}\n\nГруппа: {groupTitle}\nUsername: @{user.username}", messageLink);
+                                        await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"Пользователь: {existingTelegramUser.FirstName}\n\nСообщение: {msg.message}\n\nГруппа: {groupTitle}\nUsername: @{user.username}", messageLink);
 
                                         await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ReceiveMessage", new
                                         {
