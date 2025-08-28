@@ -76,7 +76,7 @@ authForm?.addEventListener("submit", async e => {
                 confirmCodeForm.style.display = "block";
                 confirmTwoFactoPasswordForm.style.display = "none";
             } else {
-                window.location.href = `{config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
+                window.location.href = `${config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
             }
         } else {
             showError(result.message || "Ошибка при входе.");
@@ -120,7 +120,7 @@ confirmCodeForm?.addEventListener("submit", async e => {
         const result = await res.json();
         console.log(result);
       if (res.ok) {
-        window.location.href = `{config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
+        window.location.href = `${config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
       } else {
         if (result.message) {
           if (result.message.includes(ErrorCodes.NEED_TWO_FACTOR_PASSWORD)) {
@@ -178,7 +178,7 @@ confirmTwoFactoPasswordForm?.addEventListener("submit", async e => {
     const result = await res.json();
 
     if (res.ok) {
-      window.location.href = `{config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
+      window.location.href = `${config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
     } else {
       if (result.message.includes(ErrorCodes.INVALID_TWO_FACTOR_PASSWORD)) {
         twoFactorPasswordInput.value = "";

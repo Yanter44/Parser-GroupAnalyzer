@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             if (res.ok) {
-                location.href = `{config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
+                location.href = `${config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
             } else {
                 const errorMessage = await res.text();
                 

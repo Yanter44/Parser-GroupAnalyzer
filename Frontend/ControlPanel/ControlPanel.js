@@ -30,7 +30,7 @@ async function InitializePage() {
     history.pushState(null, null, location.href);
 
     window.addEventListener('popstate', function (event) {
-        location.replace(`${config.DefaultStartFileLocation}/Index.html`);
+        location.replace(`${config.DefaultStartFileLocation}/index.html`);
     });
 
     try {
@@ -40,7 +40,7 @@ async function InitializePage() {
         });
 
         if (response.status === 401) {
-            location.href = `${config.DefaultStartFileLocation}/Index.html`;
+            location.href = `${config.DefaultStartFileLocation}/index.html`;
             return;
         }
 
@@ -402,7 +402,7 @@ async function Logout() {
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include'
         });
-        window.location.href = `${config.DefaultStartFileLocation}/Index.html`;
+        window.location.href = `${config.DefaultStartFileLocation}/index.html`;
     } catch (error) {
         console.error("Ошибка при выходе:", error);
         alert("Произошла ошибка при выходе");
