@@ -18,6 +18,12 @@ namespace MpParserAPI.Services
             allowedDuration = TimeSpan.Zero;
             var now = DateTime.UtcNow;
 
+            if (parser.SubscriptionType == SubscriptionType.Test)
+            {
+                allowedDuration = parser.TotalParsingTime;
+                return allowedDuration > TimeSpan.Zero;
+            }
+
             if (!parser.SubscriptionEndDate.HasValue || now >= parser.SubscriptionEndDate.Value)
                 return false;
 
@@ -71,6 +77,20 @@ namespace MpParserAPI.Services
         {
             var existParser = _parserDataStorage.GetParser(parserId);
             var now = DateTime.UtcNow;
+
+            if (existParser.SubscriptionType == SubscriptionType.Test)
+            {
+                if (!existParser.IsParsingStarted || !existParser.ParsingStartedAt.HasValue)
+                {
+                    return existParser.TotalParsingTime;
+                }
+
+ 
+                var elapseddTime = now - existParser.ParsingStartedAt.Value;
+                var remainingTime = existParser.TotalParsingTime - elapseddTime;
+
+                return remainingTime > TimeSpan.Zero ? remainingTime : TimeSpan.Zero;
+            }
 
             if (!existParser.SubscriptionEndDate.HasValue || now >= existParser.SubscriptionEndDate.Value)
                 return TimeSpan.Zero;
