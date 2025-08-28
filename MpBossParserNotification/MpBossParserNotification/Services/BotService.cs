@@ -122,7 +122,7 @@ namespace MpBossParserNotification.Services
             {
                 var inlineKeyboard = new InlineKeyboardMarkup(new[]
                 {
-                   InlineKeyboardButton.WithUrl("Перейти к сообщению", messagelink)
+                   InlineKeyboardButton.WithUrl("Перейти к сообщению➡️", messagelink)
                 });
                 await _botClient.SendMessage(
                     chatId: chatId,
