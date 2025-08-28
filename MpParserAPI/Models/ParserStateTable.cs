@@ -12,8 +12,8 @@ namespace MpParserAPI.Models
         public string Phone { get; set; }
 
         public SubscriptionType SubscriptionType { get; set; }
-        public DateTime SubscriptionEndDate { get; set; }
-        public TimeSpan? TotalParsingMinutes { get; set; }
+        public DateTime? SubscriptionEndDate { get; set; }
+        public TimeSpan TotalParsingTime { get; set; }
 
         [Column(TypeName = "jsonb")]
         public List<string> SpamWords { get; set; }

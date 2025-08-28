@@ -45,13 +45,13 @@ namespace MpParserAPI.Services.Admin
             dbParser.SubscriptionEndDate = DateTime.UtcNow.AddDays(modelDto.DaysSubscription);
 
             var timeUntilEnd = dbParser.SubscriptionEndDate - DateTime.UtcNow;
-            dbParser.TotalParsingMinutes = timeUntilEnd;
+            dbParser.TotalParsingTime = (TimeSpan)timeUntilEnd;
 
             if (_parserDataStorage.TryGetParser(parserId, out var parser))
             {
                 parser.SubscriptionType = subscriptionType;
                 parser.SubscriptionEndDate = dbParser.SubscriptionEndDate;
-                parser.TotalParsingMinutes = timeUntilEnd;
+                parser.TotalParsingTime = (TimeSpan)timeUntilEnd;
             }
 
             await db.SaveChangesAsync();

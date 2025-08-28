@@ -113,8 +113,6 @@ using (var scope = app.Services.CreateScope())
     var result =  await parserService.LoadAllParsersFromDbAsync();
     if (!result)
         return;
-   
-
 }
 
 app.MapHub<ParserHub>("/parserHub");

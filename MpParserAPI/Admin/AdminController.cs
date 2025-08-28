@@ -39,7 +39,7 @@ namespace MpParserAPI.Admin
                     ParserId = parser.Id.ToString(),
                     Password = parser.Password,
                     TgNickname = parser.Client.User.username,
-                    TotalParsingTime = parser.TotalParsingMinutes?.ToString(@"dd\:hh\:mm") ?? "00:00:00",
+                    TotalParsingTime = parser.TotalParsingTime.ToString(@"dd\:hh\:mm") ?? "00:00:00",
                     SubscriptionRate = parser.SubscriptionType.ToString(),
                     ProxyAddress = parser.ProxyAdress != null ? $"{parser.ProxyAdress.IpAddress}:{parser.ProxyAdress.Socks5Port}" : "???",
 

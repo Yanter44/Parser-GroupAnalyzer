@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MpParserAPI.DbContext;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MpParserAPI.Migrations
 {
     [DbContext(typeof(ParserDbContext))]
-    partial class ParserDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250826195252_RenameTotalParsingMinutesToTotalParsingTime")]
+    partial class RenameTotalParsingMinutesToTotalParsingTime
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -77,7 +80,7 @@ namespace MpParserAPI.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
-                    b.Property<DateTime?>("SubscriptionEndDate")
+                    b.Property<DateTime>("SubscriptionEndDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("SubscriptionType")
@@ -88,7 +91,7 @@ namespace MpParserAPI.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
-                    b.Property<TimeSpan>("TotalParsingTime")
+                    b.Property<TimeSpan?>("TotalParsingTime")
                         .HasColumnType("interval");
 
                     b.HasKey("Id");

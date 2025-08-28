@@ -19,8 +19,8 @@ namespace MpParserAPI.Models
         public TelegramAuthState AuthState { get; set; }
         public Timer ParsingTimer { get; set; }
         public SubscriptionType SubscriptionType { get; set; }
-        public DateTime SubscriptionEndDate { get; set; }
-        public TimeSpan? TotalParsingMinutes { get; set; }
+        public DateTime? SubscriptionEndDate { get; set; }
+        public TimeSpan TotalParsingTime { get; set; }
         public TimeSpan? ParsingDelay { get; set; }
         public DateTime? ParsingStartedAt { get; set; }
         public ParserData(Guid _parserId, string password,string phone)

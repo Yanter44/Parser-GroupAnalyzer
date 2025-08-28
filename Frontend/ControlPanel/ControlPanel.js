@@ -26,12 +26,13 @@ closePanelBtn.addEventListener('click', closeSidePanel);
 overlay.addEventListener('click', closeSidePanel);
 parserTogglebutton.addEventListener('click', ValidateInputsAndTryStartParsing);
 
-async function InitializePage(){
- history.pushState(null, null, location.href);
+async function InitializePage() {
+    history.pushState(null, null, location.href);
 
     window.addEventListener('popstate', function (event) {
         location.replace(`${config.DefaultStartFileLocation}/Index.html`);
     });
+
     try {
         const response = await fetch(`${config.API_BASE}/ParserConfig/GetParserState`, {
             method: 'GET',
@@ -57,22 +58,55 @@ async function InitializePage(){
             parserLogs.forEach(element => {
                 const container = document.querySelector(".DataList");
                 const item = document.createElement("li");
-
                 item.className = "UserParserDataItem";
+
+                // Безопасное экранирование для URL и текста
+                const sageProfileImageUrl = escapeUrl(element.profileImageUrl) || 'https://via.placeholder.com/100';
                 const safeMessageText = escapeHtml(element.messageText);
+                const safeFirstName = escapeHtml(element.firstName);
+                const safeMessageTime = escapeHtml(element.messageTime);
 
-                item.innerHTML = `<img src="${element.profileImageUrl || 'https://via.placeholder.com/100'}" alt="User Image" class="ListItemImage">
-                                  <div class="NicknameHandler">${element.firstName}</div>
-                                  <div class="MessageText">${element.messageText}</div>
-                                  <div class="MessageTime">${element.messageTime}</div>
-                                  <button class="ThisIsSpamButton" onclick="ThisIsASpam('${safeMessageText}')">Это спам</button>
-                                  <button class="GoToTelegramButton" data-username="${element.username}">Перейти в телеграм</button>`;
+                // Создаем элементы для вставки
+                const img = document.createElement('img');
+                img.src = sageProfileImageUrl;
+                img.alt = 'User Image';
+                img.className = 'ListItemImage';
+                
+                const nicknameDiv = document.createElement('div');
+                nicknameDiv.className = 'NicknameHandler';
+                nicknameDiv.textContent = safeFirstName;
 
+                const messageTextDiv = document.createElement('div');
+                messageTextDiv.className = 'MessageText';
+                messageTextDiv.textContent = element.messageText;
+
+                const messageTimeDiv = document.createElement('div');
+                messageTimeDiv.className = 'MessageTime';
+                messageTimeDiv.textContent = safeMessageTime;
+
+                const spamButton = document.createElement('button');
+                spamButton.className = 'ThisIsSpamButton';
+                spamButton.dataset.message = safeMessageText;
+                spamButton.textContent = 'Это спам';
+
+                const telegramButton = document.createElement('button');
+                telegramButton.className = 'GoToTelegramButton';
+                telegramButton.dataset.username = element.username;
+                telegramButton.textContent = 'Перейти в телеграм';
+
+                // Собираем элементы
+                item.appendChild(img);
+                item.appendChild(nicknameDiv);
+                item.appendChild(messageTextDiv);
+                item.appendChild(messageTimeDiv);
+                item.appendChild(spamButton);
+                item.appendChild(telegramButton);
+ 
                 container.prepend(item);
 
-                const GoToTelegramButton = item.querySelector('.GoToTelegramButton');
-                GoToTelegramButton.addEventListener('click', () => {
-                    const username = GoToTelegramButton.dataset.username;
+                // Обработчик для перехода в Telegram
+                telegramButton.addEventListener('click', () => {
+                    const username = telegramButton.dataset.username;
                     if (username) {
                         window.open(`https://t.me/${username}`, '_blank');
                     } else {
@@ -81,21 +115,15 @@ async function InitializePage(){
                 });
             });
         }
+
+        // Обработка данных для интерфейса
         savedTags.keywords = Array.isArray(result.parserDataResponceDto.parserkeywords) ? result.parserDataResponceDto.parserkeywords : [];
         savedTags.groups = Array.isArray(result.parserDataResponceDto.targetGroups) ? result.parserDataResponceDto.targetGroups : [];
+
         if (result && result.parserDataResponceDto) {
-            const {
-                profileImageUrl,
-                profileNickName,
-                isParsingStarted,
-                parserId,
-                parserPassword,
-                userGroupsList,
-                remainingParsingTimeHoursMinutes,
-                totalParsingTime
-            } = result.parserDataResponceDto;
+            const { profileImageUrl, profileNickName, isParsingStarted, parserId, parserPassword, userGroupsList, remainingParsingTimeHoursMinutes, totalParsingTime } = result.parserDataResponceDto;
             window.userGroupsList = userGroupsList ?? [];
-             
+
             const userImages = document.querySelectorAll(".UserImage");
             userImages.forEach(img => {
                 img.src = profileImageUrl;
@@ -107,8 +135,6 @@ async function InitializePage(){
             const parserIdElement = document.querySelector(".ParserIdValueText");
             const parserPasswordElement = document.querySelector(".PasswordValueText");
             const totalparsingTimeElement = document.getElementsByClassName("TotalParsingTimeValueText")[0];
-            console.log(totalParsingTime);
-            console.log(remainingParsingTimeHoursMinutes);
 
             if (parserIdElement) {
                 parserIdElement.textContent = parserId;
@@ -116,19 +142,21 @@ async function InitializePage(){
             if (parserPasswordElement) {
                 parserPasswordElement.textContent = parserPassword;
             }
-            totalparsingTimeElement.textContent = totalParsingTime; 
+            if (totalparsingTimeElement) {
+                totalparsingTimeElement.textContent = totalParsingTime;
+            }
+
             if (isParsingStarted) {
                 setInputsEnabled(false);
 
                 if (remainingParsingTimeHoursMinutes && remainingParsingTimeHoursMinutes !== "00:00:00") {
                     let timeElem = document.querySelector(".RemainingTimeToStopParser");
-                                
-                        timeElem.style.marginLeft = "10px";
-                        timeElem.style.marginBottom = "10px";
-                        const btn = document.querySelector(".StartParserButton, .StopParserButton");
-                        if (btn && btn.parentNode) {
-                            btn.parentNode.insertBefore(timeElem, btn.nextSibling);
-                        }
+                    timeElem.style.marginLeft = "10px";
+                    timeElem.style.marginBottom = "10px";
+                    const btn = document.querySelector(".StartParserButton, .StopParserButton");
+                    if (btn && btn.parentNode) {
+                        btn.parentNode.insertBefore(timeElem, btn.nextSibling);
+                    }
                     timeElem.textContent = `${remainingParsingTimeHoursMinutes}`;
                 } else {
                     const timeElem = document.querySelector(".RemainingParsingTime");
@@ -138,11 +166,11 @@ async function InitializePage(){
             } else {
                 setInputsEnabled(true);
                 const timeElem = document.querySelector(".RemainingParsingTime");
-                if (timeElem) timeElem.remove();   
+                if (timeElem) timeElem.remove();
             }
-            
+
             updateParserButton(isParsingStarted ? 'stop' : 'start');
-           
+
             if (isParsingStarted) {
                 setInputsEnabled(false);
                 startSignalR();
@@ -155,6 +183,7 @@ async function InitializePage(){
         document.getElementById("mainContent").style.display = "block";
     }
 }
+
 
 function CopyParserIdAndPassword(){
     const parserId = document.querySelector(".ParserIdValueText").textContent.trim();
@@ -537,26 +566,57 @@ function addMessageToList(data) {
     const container = document.querySelector(".DataList");
     const item = document.createElement("li");
     const noMessagesText = document.querySelector('.DataListDoNotHaveAnyMessagesText');
+
     if (noMessagesText) {
         noMessagesText.remove();
     }
 
-
     item.className = "UserParserDataItem";
+
     const safeMessageText = escapeHtml(data.messageText);
-    item.innerHTML = `
-        <img src="${data.profileImageUrl || 'https://via.placeholder.com/100'}" alt="User Image" class="ListItemImage">
-        <div class="NicknameHandler">${data.name}</div>
-        <div class="MessageText">${data.messageText}</div>
-        <div class="MessageTime">${data.messageTime}</div>
-        <button class="ThisIsSpamButton" onclick="ThisIsASpam('${safeMessageText}')">Это спам</button>
-        <button class="GoToTelegramButton" data-username="${data.username}">Перейти в телеграм</button> `;
+    const safeName = escapeHtml(data.name);
+    const safeMessageTime = escapeHtml(data.messageTime);
+    const safeProfileImageUrl = escapeUrl(data.profileImageUrl || 'https://via.placeholder.com/100');
+    const safeUsername = escapeHtml(data.username);
+
+    const img = document.createElement('img');
+    img.src = safeProfileImageUrl;
+    img.alt = 'User Image';
+    img.className = 'ListItemImage';
+
+    const nicknameDiv = document.createElement('div');
+    nicknameDiv.className = 'NicknameHandler';
+    nicknameDiv.textContent = safeName;
+
+    const messageTextDiv = document.createElement('div');
+    messageTextDiv.className = 'MessageText';
+    messageTextDiv.textContent = safeMessageText;
+
+    const messageTimeDiv = document.createElement('div');
+    messageTimeDiv.className = 'MessageTime';
+    messageTimeDiv.textContent = safeMessageTime;
+
+    const spamButton = document.createElement('button');
+    spamButton.className = 'ThisIsSpamButton';
+    spamButton.dataset.message = safeMessageText; 
+    spamButton.textContent = 'Это спам';
+
+    const telegramButton = document.createElement('button');
+    telegramButton.className = 'GoToTelegramButton';
+    telegramButton.dataset.username = safeUsername; 
+    telegramButton.textContent = 'Перейти в телеграм';
+
+    item.appendChild(img);
+    item.appendChild(nicknameDiv);
+    item.appendChild(messageTextDiv);
+    item.appendChild(messageTimeDiv);
+    item.appendChild(spamButton);
+    item.appendChild(telegramButton);
 
     container.prepend(item);
 
-    const GoToTelegramButton = item.querySelector('.GoToTelegramButton');
-    GoToTelegramButton.addEventListener('click', () => {
-        const username = GoToTelegramButton.dataset.username;
+    telegramButton.addEventListener('click', () => {
+        const username = telegramButton.dataset.username;
         if (username) {
             window.open(`https://t.me/${username}`, '_blank');
         } else {
@@ -564,6 +624,7 @@ function addMessageToList(data) {
         }
     });
 }
+
 
 async function ThisIsASpam(spamMessage) {
     try {
@@ -576,6 +637,10 @@ async function ThisIsASpam(spamMessage) {
             })
         });
 
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const result = await response.json();
         console.log('Success:', result);
         await RemoveAllSpamMessages(spamMessage);
@@ -584,12 +649,13 @@ async function ThisIsASpam(spamMessage) {
         alert('Ошибка при добавлении в спам');
     }
 }
+
 async function RemoveAllSpamMessages(spamMessage) {
     const items = document.querySelectorAll('.UserParserDataItem');
-
+    
     items.forEach(item => {
-        const message = item.querySelector('.MessageText')?.textContent;
-        if (message === `${spamMessage}`) {
+        const messageElement = item.querySelector('.MessageText');
+        if (messageElement && messageElement.textContent === spamMessage) {
             item.remove();
         }
     });
@@ -631,6 +697,22 @@ function setInputsEnabled(enabled) {
     });
 }
 
-function escapeHtml(str) {
-    return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+document.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('ThisIsSpamButton')) {
+        const spamMessage = e.target.dataset.message;
+        await ThisIsASpam(spamMessage);
+    }
+});
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+function escapeUrl(url) {
+    try {
+        return encodeURI(url);
+    } catch {
+        return 'https://via.placeholder.com/100';
+    }
 }

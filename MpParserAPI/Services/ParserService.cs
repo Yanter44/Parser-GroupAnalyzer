@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MpParserAPI.Common;
 using MpParserAPI.Controllers;
 using MpParserAPI.DbContext;
+using MpParserAPI.Enums;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models;
 using MpParserAPI.Models.Dtos;
@@ -173,7 +174,7 @@ public class ParserService : IParser
                                             messageLink = $"https://t.me/{groupUsername}/{msg.id}";
                                         }
 
-                                        await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"Пользователь: {existingTelegramUser.FirstName}\n\nСообщение: {msg.message}\n\nГруппа: {groupTitle}\nUsername: @{user.username}", messageLink);
+                                      //  await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"Пользователь: {existingTelegramUser.FirstName}\n\nСообщение: {msg.message}\n\nГруппа: {groupTitle}\nUsername: @{user.username}", messageLink);
 
                                         await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ReceiveMessage", new
                                         {
@@ -441,6 +442,7 @@ public class ParserService : IParser
 
         var TotalParsingTime = _subscriptionManager.GetTotalParsingTime(parser);
         var AvailableParsingTime = _subscriptionManager.GetRemainingParsingTime(parserId);
+
         var formattedTotalParsingTime = TimeFormatterHelper.ToHumanReadableString(TotalParsingTime);
         var formattedAvailableParsingTime = TimeFormatterHelper.ToHumanReadableStringThisSeconds(AvailableParsingTime);
         var response = new GetParserStateResponceDto
@@ -523,8 +525,7 @@ public class ParserService : IParser
                 var elapsed = DateTime.UtcNow - parser.ParsingStartedAt.Value;
                 if (elapsed > TimeSpan.Zero)
                 {
-                    parser.TotalParsingMinutes ??= TimeSpan.Zero;
-                    parser.TotalParsingMinutes -= elapsed;
+                    parser.TotalParsingTime -= elapsed;
                 }
             }
 
@@ -537,7 +538,7 @@ public class ParserService : IParser
             var parserState = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
             if (parserState != null)
             {
-                parserState.TotalParsingMinutes = parser.TotalParsingMinutes;
+                parserState.TotalParsingTime = parser.TotalParsingTime;
                 await database.SaveChangesAsync();
             }
 
@@ -545,7 +546,6 @@ public class ParserService : IParser
             await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ParsingIsStoped");
         }
     }
-
 
     public async Task DisposeParser(Guid parserId)
     {
@@ -556,6 +556,7 @@ public class ParserService : IParser
             await Task.CompletedTask;
         }
     }
+
     public async Task<OperationResult<object>> AddNewSpamMessage(Guid parserId, AddNewSpamMessageDto modelDto)
     {
         if (!_parserStorage.TryGetParser(parserId, out var parser))

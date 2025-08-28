@@ -53,7 +53,7 @@ namespace MpParserAPI.Services
                                             .ToList(),
                         TargetGroupTitles = parserState.TargetGroups.Select(x => x.Title).ToList(),
                         IsParsingStarted = false,
-                        TotalParsingMinutes = parserState.TotalParsingMinutes,
+                        TotalParsingTime = parserState.TotalParsingTime,
                         SubscriptionType = parserState.SubscriptionType,
                         SubscriptionEndDate = parserState.SubscriptionEndDate,
                         
@@ -74,6 +74,7 @@ namespace MpParserAPI.Services
                             _ => null
                         };
                     });
+
                     var gettedAvailableProxy = await _spaceProxyService.GetAndSetAvailableProxy(parserData.Id);
                     if(gettedAvailableProxy != null)
                     {
@@ -260,6 +261,7 @@ namespace MpParserAPI.Services
 
             _parserStorage.TryGetTemporaryAuthData(tempAuthId, out var tempData);
             var phone = tempData.Phone;
+
             if (string.IsNullOrWhiteSpace(phone))
                 return OperationResult<ParserAuthResultDto>.Fail("Телефон не найден.");
 
@@ -292,14 +294,14 @@ namespace MpParserAPI.Services
 
             var parser = new ParserData(parserId, password, phone)
             {
-   
-                TotalParsingMinutes = TimeSpan.FromMinutes(30) 
+                SubscriptionType = SubscriptionType.Test,
+                TotalParsingTime = TimeSpan.FromMinutes(30) 
             };
             _logger.LogInformation(
             "Создан парсер: {ParserId}, Телефон: {Phone}, Время парсинга: {TotalParsingTime}",
             parser.Id,
             parser.Phone,
-            parser.TotalParsingMinutes);
+            parser.TotalParsingTime);
 
             _parserStorage.AddOrUpdateParser(parserId, parser);
 
@@ -333,7 +335,7 @@ namespace MpParserAPI.Services
                 Keywords = new string[] { },
                 Phone = phone,
                 SpamWords = new List<string>(),
-                TotalParsingMinutes = TimeSpan.FromMinutes(30),
+                TotalParsingTime = TimeSpan.FromMinutes(30),
                 TargetGroups = new List<GroupReference>(),
                 SubscriptionType = SubscriptionType.Test
 

@@ -148,14 +148,13 @@ namespace MpParserAPI.Services
                     }
                     else if (originalParsingDelay.HasValue)
                     {
-                        parser.TotalParsingMinutes ??= TimeSpan.Zero;
-                        parser.TotalParsingMinutes -= originalParsingDelay.Value;
+                        parser.TotalParsingTime -= originalParsingDelay.Value;
 
                         using var database = await _dbContextFactory.CreateDbContextAsync();
                         var parserState = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
                         if (parserState != null)
                         {
-                            parserState.TotalParsingMinutes = parser.TotalParsingMinutes;
+                            parserState.TotalParsingTime = parser.TotalParsingTime;
                             await database.SaveChangesAsync();
                         }
                     }
@@ -220,10 +219,6 @@ namespace MpParserAPI.Services
             }
             return null;
         }
-
-
-
-
 
         //пока ниже лишнее всеее________________________________________________________
         private string GetSessionPath(string phone, bool isTemp)

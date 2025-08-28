@@ -36,16 +36,16 @@ namespace MpParserAPI.HostedServices
 
                     if (parserStates.TryGetValue(parserData.Id, out var state))
                     {
-                        state.TotalParsingMinutes = (state.TotalParsingMinutes ?? TimeSpan.Zero) - timeElapsed;
-                        if (state.TotalParsingMinutes < TimeSpan.Zero)
-                            state.TotalParsingMinutes = TimeSpan.Zero;
+                        state.TotalParsingTime = state.TotalParsingTime - timeElapsed;
+                        if (state.TotalParsingTime < TimeSpan.Zero)
+                            state.TotalParsingTime = TimeSpan.Zero;
 
-                        if (state.TotalParsingMinutes == TimeSpan.Zero)
+                        if (state.TotalParsingTime == TimeSpan.Zero)
                         {
                             parserData.IsParsingStarted = false;
                         }
 
-                        parserData.TotalParsingMinutes = state.TotalParsingMinutes;
+                        parserData.TotalParsingTime = state.TotalParsingTime;
                         parserData.ParsingStartedAt = now;
                     }
                 }

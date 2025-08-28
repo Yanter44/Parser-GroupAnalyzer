@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
 authForm?.addEventListener("submit", async e => {
     e.preventDefault();
     const phone = document.getElementById("Phone").value.trim();
-    const submitButton = authForm.querySelector(".AuthButton"); // Получаем кнопку отправки
+    const submitButton = authForm.querySelector(".AuthButton"); 
     
     if (!phone) {
         showError("Пожалуйста, заполните номер телефона.");
