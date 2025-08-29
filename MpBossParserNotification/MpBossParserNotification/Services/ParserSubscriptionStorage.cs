@@ -31,6 +31,9 @@ namespace MpBossParserNotification.Services
             return false;
         }
 
-
+        public bool IsUserSubscribedToParser(long chatId)
+        {
+            return _subscriptions.Values.Contains(chatId);
+        }
     }
 }
