@@ -4,10 +4,17 @@ console.log(config.API_BASE);
 console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
 	tg.ready();
-    if (tg && tg.BackButton) {
-        tg.BackButton.show(); 
-        tg.BackButton.onClick(goBack); 
+	
+    if (tg && tg.initDataUnsafe && tg.version >= 6.1) {
+        if (tg.BackButton && typeof tg.BackButton.show === 'function') {
+            tg.BackButton.show(); 
+            tg.BackButton.onClick(goBack);
+        }
+    } else if (tg && tg.version === 6.0) {
+        tg.sendData('web_app_setup_back_button');      
+        tg.onEvent('back_button_pressed', goBack);
     }
+	
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.LoginInput') && !e.target.closest('.LoginButton')) {
             if (document.activeElement && document.activeElement.blur) {
