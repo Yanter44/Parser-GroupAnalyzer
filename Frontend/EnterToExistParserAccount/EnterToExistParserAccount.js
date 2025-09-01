@@ -8,7 +8,13 @@ document.addEventListener("DOMContentLoaded", () => {
         tg.BackButton.show(); 
         tg.BackButton.onClick(goBack); 
     }
-
+    if (tg) {
+        tg.onEvent('viewportChanged', (event) => {
+            if (!event.isStateStable && document.activeElement) {
+                document.activeElement.blur();
+            }
+        });
+    }
     const LoginForm = document.querySelector(".LoginForm");
 
     LoginForm?.addEventListener("submit", async e => {
