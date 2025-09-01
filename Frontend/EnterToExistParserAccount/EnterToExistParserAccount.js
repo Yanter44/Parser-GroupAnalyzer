@@ -8,13 +8,13 @@ document.addEventListener("DOMContentLoaded", () => {
         tg.BackButton.show(); 
         tg.BackButton.onClick(goBack); 
     }
-    if (tg) {
-        tg.onEvent('viewportChanged', (event) => {
-            if (!event.isStateStable && document.activeElement) {
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.LoginInput') && !e.target.closest('.LoginButton')) {
+            if (document.activeElement && document.activeElement.blur) {
                 document.activeElement.blur();
             }
-        });
-    }
+        }
+    });
     const LoginForm = document.querySelector(".LoginForm");
 
     LoginForm?.addEventListener("submit", async e => {
@@ -61,9 +61,9 @@ function isValidGuid(guid) {
     return regex.test(guid);
 }
 function goBack() {
-    if (tg && tg.close) {
+    if (window.history.length > 1) {
+        window.history.back(); 
+    } else if (tg && tg.close) {
         tg.close(); 
-    } else {
-        window.history.back();
     }
 }
