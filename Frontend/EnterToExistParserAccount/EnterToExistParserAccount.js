@@ -1,8 +1,13 @@
 
+const tg = window.Telegram.WebApp;
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
-
 document.addEventListener("DOMContentLoaded", () => {
+    if (tg && tg.BackButton) {
+        tg.BackButton.show(); 
+        tg.BackButton.onClick(goBack); 
+    }
+
     const LoginForm = document.querySelector(".LoginForm");
 
     LoginForm?.addEventListener("submit", async e => {
@@ -25,6 +30,9 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             if (res.ok) {
+                if (tg && tg.BackButton) {
+                    tg.BackButton.hide();
+                }
                 location.href = `${config.DefaultStartFileLocation}/ControlPanel/ControlPanel.html`;
             } else {
                 const errorMessage = await res.text();
@@ -44,4 +52,11 @@ document.addEventListener("DOMContentLoaded", () => {
 function isValidGuid(guid) {
     const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return regex.test(guid);
+}
+function goBack() {
+    if (tg && tg.close) {
+        tg.close(); 
+    } else {
+        window.history.back();
+    }
 }
