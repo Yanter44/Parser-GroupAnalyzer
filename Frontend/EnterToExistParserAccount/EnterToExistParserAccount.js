@@ -3,6 +3,7 @@ const tg = window.Telegram.WebApp;
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
+	tg.ready();
     if (tg && tg.BackButton) {
         tg.BackButton.show(); 
         tg.BackButton.onClick(goBack); 
