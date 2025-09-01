@@ -5,14 +5,31 @@ console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
 	tg.ready();
 	
-    if (tg && tg.initDataUnsafe && tg.version >= 6.1) {
-        if (tg.BackButton && typeof tg.BackButton.show === 'function') {
+     // Определяем версию и настраиваем кнопку "Назад" соответствующим образом
+    if (tg && tg.initDataUnsafe) {
+        const webAppVersion = parseFloat(tg.version);
+        console.log('WebApp version:', webAppVersion);
+        
+        if (webAppVersion >= 6.1 && tg.BackButton && typeof tg.BackButton.show === 'function') {
+            // Для версий 6.1+ используем стандартный BackButton
             tg.BackButton.show(); 
             tg.BackButton.onClick(goBack);
+            console.log('Using standard BackButton');
+        } else if (webAppVersion === 6.0) {
+            // Для версии 6.0 используем события
+            console.log('Using web_app_setup_back_button for version 6.0');
+            
+            // Показываем кнопку "Назад"
+            if (tg.sendData) {
+                tg.sendData(JSON.stringify({
+                    method: 'web_app_setup_back_button',
+                    params: { is_visible: true }
+                }));
+            }
+            
+            // Обработчик события back_button_pressed
+            tg.onEvent('back_button_pressed', goBack);
         }
-    } else if (tg && tg.version === 6.0) {
-        tg.sendData('web_app_setup_back_button');      
-        tg.onEvent('back_button_pressed', goBack);
     }
 	
     document.addEventListener('click', (e) => {
