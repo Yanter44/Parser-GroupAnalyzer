@@ -26,27 +26,30 @@
       </div>
 
       <div class="HeaderCenter">
-        <span class="MainHeaderTitleText">MP PARSER</span>
+        <span class="MainHeaderTitleText">ClientCrawl</span>
       </div>
 
     </header>
 
 <section class="MainContentContainerHeaderButtons">
-  <button id="parserToggleButton" class="StartParserButton">
-    <img src="Assets/StartParsingImage.png" alt="Старт" class="StartParserIcon" />
-    <span class="ParserButtonText">Начать парсинг</span>
-  </button>
+  <div class="ParserButtonHandler">
+    <button id="parserToggleButton" class="StartParserButton">
+       <img src="Assets/StartParsingImage.png" alt="Старт" class="StartParserIcon" />
+       <span class="ParserButtonText">Начать парсинг</span>
+    </button>
+  </div>
+
   <span class="RemainingTimeToStopParser"></span>
 
   <div class="FormGroupsContainer">
     <div class="FormGroup">
       <label for="keywordInput">Ключевые слова:</label>
-      <button class="AddTagButton" id="AddKeywordsButton" onclick="openModal('keywords')">Добавить ключевые слова</button>
+      <button class="AddTagButton" id="AddKeywordsButton" onclick="openModal('keywords')">Добавить</button>
     </div>
 
     <div class="FormGroup">
       <label for="groupInput">Группы:</label>
-      <button class="AddTagButton"  id="AddGroupsButton" onclick="openModal('groups')">Добавить группы</button>
+      <button class="AddTagButton"  id="AddGroupsButton" onclick="openModal('groups')">Добавить</button>
     </div>
   </div>
 </section>
@@ -82,14 +85,13 @@
     
     <div class="PanelContent">
       <div class="UserImageContainer">
-        <img src="" alt="User Avatar" class="UserImage" />
+        <img src="..." alt="User Avatar" class="UserImage" />
         <span class="ClientTelegramUserName">dfsafas</span>
       </div> 
-      <div class="vertical-separator"></div>
 
       <div class="ParserIdContainer">
         <div class="ParserHeaderContainerContainer">
-            <span class="ParserIdName">Ваш ParserId</span>
+            <span class="ParserIdName">Ваш Ключ-id</span>
             <img src="./Assets/ParserIdentificatorImage.png"/>
         </div>
         <span class="ParserIdValueText"></span>
@@ -120,7 +122,6 @@
       </div>    
     </div>
 
-    <div class="vertical-separator"></div>
    
 
     <div class="LogoutContainer" onclick="Logout()">

@@ -465,21 +465,21 @@ public class ParserService : IParser
 
         return response;
     }
-    public async Task StartParsing(Guid parserId)
+    public async Task<OperationResult<object>> StartParsing(Guid parserId)
     {
 
         if (!_parserStorage.TryGetParser(parserId, out var parser) || parser.Client == null)
-            return;
+            return OperationResult<object>.Fail("Не удалось найти клиента или парсер");
 
         if (parser.IsParsingStarted)
         {
             _logger.LogWarning("Парсинг уже запущен для {ParserId}", parserId);
-            return;
+              return OperationResult<object>.Fail($"Парсинг уже запущен для {parserId}");
         }
         if (!_subscriptionManager.CanStartParsing(parser, out var allowedDuration))
         {
             _logger.LogWarning("Недостаточно времени подписки для парсера {ParserId}", parserId);
-            return;
+              return OperationResult<object>.Fail($"Недостаточно времени подписки для парсера {parserId}");
         }
 
         Func<IObject, Task> handler = async update => await HandleUpdate(parserId, update);
@@ -508,6 +508,7 @@ public class ParserService : IParser
         {
             await _redisService.SetAddRangeAsync(parserId.ToString(), spamWords); 
         }
+        return OperationResult<object>.Ok($"Парсинг был успешно запущен для {parserId}");
     }
 
     public async Task StopParsing(Guid parserId)

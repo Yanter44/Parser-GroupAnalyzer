@@ -26,9 +26,17 @@ namespace MpParserAPI.Controllers
         public async Task<IActionResult> StartParsing()
         {
             var parserId = (Guid)HttpContext.Items["ParserId"];
-            await _parser.StartParsing(parserId);
-            _logger.LogInformation("Парсер успешно запущен для ParserId: {ParserId}", parserId);
-            return Ok("Парсинг успешно запущен.");
+
+             var result =  await _parser.StartParsing(parserId);
+            if (result.Success)
+            {
+                _logger.LogInformation("Парсер успешно запущен для ParserId: {ParserId}", parserId);
+                return Ok("Парсинг успешно запущен.");
+            }
+            else
+            {
+                return Forbid();
+            }
         }
 
         [ParserAuthorize]
@@ -143,8 +151,7 @@ namespace MpParserAPI.Controllers
             return Ok(new { remainingParsingTimeHoursMinutes = formattedTime });  
         }
 
-        [ParserAuthorize]
-        [HttpPost("AddNewSpamMessage")]
+        [ParserAuthorize]        [HttpPost("AddNewSpamMessage")]
         public async Task<IActionResult> AddNewSpamMessage(AddNewSpamMessageDto messageDto)
         {
             var parserId = (Guid)HttpContext.Items["ParserId"];

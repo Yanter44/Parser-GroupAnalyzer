@@ -11,6 +11,7 @@ const savedTags = {
     keywords: [],
     groups: []
 };
+
 //DomElements
 const AddGroupsButton = document.getElementById('AddGroupsButton');
 const AddKeywordsButton = document.getElementById('AddKeywordsButton');
@@ -60,13 +61,11 @@ async function InitializePage() {
                 const item = document.createElement("li");
                 item.className = "UserParserDataItem";
 
-                // Безопасное экранирование для URL и текста
                 const sageProfileImageUrl = escapeUrl(element.profileImageUrl) || 'https://via.placeholder.com/100';
                 const safeMessageText = escapeHtml(element.messageText);
                 const safeFirstName = escapeHtml(element.firstName);
                 const safeMessageTime = escapeHtml(element.messageTime);
 
-                // Создаем элементы для вставки
                 const img = document.createElement('img');
                 img.src = sageProfileImageUrl;
                 img.alt = 'User Image';
@@ -92,7 +91,7 @@ async function InitializePage() {
                 const telegramButton = document.createElement('button');
                 telegramButton.className = 'GoToTelegramButton';
                 telegramButton.dataset.username = element.username;
-                telegramButton.textContent = 'Перейти в телеграм';
+                telegramButton.textContent = 'Чат';
 
                 // Собираем элементы
                 item.appendChild(img);
@@ -143,16 +142,21 @@ async function InitializePage() {
                 parserPasswordElement.textContent = parserPassword;
             }
             if (totalparsingTimeElement) {
-                totalparsingTimeElement.textContent = totalParsingTime;
+                console.log("начинаем проверку totalParsingTime: " + totalParsingTime);
+
+                if (totalParsingTime === "") {
+                    totalparsingTimeElement.textContent = "0м";
+                } else {
+                    totalparsingTimeElement.textContent = totalParsingTime;
+                }
             }
+
 
             if (isParsingStarted) {
                 setInputsEnabled(false);
 
                 if (remainingParsingTimeHoursMinutes && remainingParsingTimeHoursMinutes !== "00:00:00") {
                     let timeElem = document.querySelector(".RemainingTimeToStopParser");
-                    timeElem.style.marginLeft = "10px";
-                    timeElem.style.marginBottom = "10px";
                     const btn = document.querySelector(".StartParserButton, .StopParserButton");
                     if (btn && btn.parentNode) {
                         btn.parentNode.insertBefore(timeElem, btn.nextSibling);
@@ -226,7 +230,7 @@ function openModal(type) {
         duplicates: false,
         delimiters: null,
         dropdown: {
-            maxItems: 100,
+            maxItems: 10,
             enabled: 0,
             closeOnSelect: false
         }
@@ -329,6 +333,10 @@ function stopTickTimer() {
         clearInterval(tickIntervalId);
         tickIntervalId = null;
     }
+    const span = document.querySelector(".RemainingTimeToStopParser");
+    if (span) {
+        span.style.display = 'none';
+    }
 }
 
 function startTickTimer(timeString) {
@@ -347,11 +355,20 @@ function startTickTimer(timeString) {
     let minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0;
     let seconds = secondsMatch ? parseInt(secondsMatch[1]) : 0;
     
+
     let span = document.querySelector(".RemainingTimeToStopParser");
     if (!span) {
         span = document.createElement("span");
         span.classList.add("RemainingTimeToStopParser");
+        
+        const buttonHandler = document.querySelector(".ParserButtonHandler");
+        if (buttonHandler) {
+            buttonHandler.appendChild(span);
+        }
     }
+    
+
+    span.style.display = 'block'
 
     span.style.marginLeft = "10px";
     span.style.marginBottom = "10px";
@@ -478,41 +495,50 @@ function closeSidePanel() {
 async function startParsing() {
     parserTogglebutton.disabled = true;
     try {
-
-        await fetch(`${config.API_BASE}/ParserConfig/StartParsing`, {
+        const startResponse = await fetch(`${config.API_BASE}/ParserConfig/StartParsing`, {
             method: 'POST',
             credentials: 'include'
         });
+
+        if (!startResponse.ok) {
+            if (startResponse.status === 403) {
+                throw new Error("Недостаточно времени подписки для запуска парсинга.");
+            }
+
+            const errorText = await startResponse.text();
+            throw new Error("Ошибка запуска парсинга: " + errorText);
+        }
 
         const remainTimeResponse = await fetch(`${config.API_BASE}/ParserConfig/GetParserRemainTime`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include'
         });
-        console.log(remainTimeResponse);
+
         if (!remainTimeResponse.ok) {
             const errorText = await remainTimeResponse.text();
             throw new Error("Ошибка получения оставшегося времени: " + errorText);
         }
-        
+
         const remainTimeJson = await remainTimeResponse.json();
         const remainTime = remainTimeJson.remainingParsingTimeHoursMinutes;
+
         console.log(remainTimeJson);
+
         startTickTimer(remainTime);
         startSignalR();
-
         updateParserButton('stop');
 
     } catch (error) {
         console.error('Ошибка при запуске парсинга:', error);
         updateParserButton('start');
         alert('Ошибка при запуске парсинга: ' + error.message);
-    
     } finally {
         parserTogglebutton.disabled = false;
         setInputsEnabled(true);
     }
 }
+
 
 async function stopParsing() {
     try {
@@ -520,7 +546,7 @@ async function stopParsing() {
             method: 'POST',
             credentials: 'include'
         });
-
+        stopTickTimer();
         parserTogglebutton.classList.remove('StopParserButton');
         parserTogglebutton.classList.add('StartParserButton');
         icon.src = 'Assets/StartParsingImage.png';
@@ -604,7 +630,7 @@ function addMessageToList(data) {
     const telegramButton = document.createElement('button');
     telegramButton.className = 'GoToTelegramButton';
     telegramButton.dataset.username = safeUsername; 
-    telegramButton.textContent = 'Перейти в телеграм';
+    telegramButton.textContent = 'Чат';
 
     item.appendChild(img);
     item.appendChild(nicknameDiv);
