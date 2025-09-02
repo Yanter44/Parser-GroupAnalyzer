@@ -3,45 +3,50 @@ const tg = window.Telegram.WebApp;
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
-	tg.ready();
-	
-     const webAppVersion = parseFloat(tg.version);
-    console.log('WebApp version:', webAppVersion);
-    
-    // Для версий 6.1+ используем стандартный BackButton
-    if (webAppVersion >= 6.1 && tg.BackButton && typeof tg.BackButton.show === 'function') {
-        tg.BackButton.show(); 
-        tg.BackButton.onClick(goBack);
-        console.log('Using standard BackButton');
-    } 
-    // Для версии 6.0 используем правильный подход
-    else if (webAppVersion === 6.0) {
-        console.log('Using web_app_setup_back_button for version 6.0');
-        
-        // ПРАВИЛЬНЫЙ способ для 6.0
-        if (tg && tg.isVersionAtLeast('6.0')) {
-            // Используем правильный метод для показа кнопки
+	  function initTelegramWebApp() {
+        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+            const tg = Telegram.WebApp;
+            
+            console.log('WebApp version:', tg.version);
+            
+            // Настройка кнопки назад с проверкой доступности
             try {
-                // Вариант 1: Через sendData
-                tg.sendData(JSON.stringify({
-                    method: 'web_app_setup_back_button',
-                    params: { is_visible: true }
-                }));
-                
-                // Вариант 2: Через postEvent (более прямой)
-                tg.postEvent('web_app_setup_back_button', { is_visible: true });
-                
-                // Вешаем обработчик
-                tg.onEvent('back_button_pressed', goBack);
-                
+                if (typeof tg.postEvent === 'function') {
+                    tg.postEvent('web_app_setup_back_button', {is_visible: true});
+                    
+                    // Обработчик кнопки назад
+                    tg.BackButton.onClick(function() {
+                        // Ваша логика при нажатии назад
+                        tg.close();
+                    });
+                    
+                    tg.BackButton.show();
+                }
             } catch (error) {
-                console.log('Error setting up back button:', error);
+                console.error('Error setting up back button:', error);
             }
+            
+            // Скрываем основные кнопки
+            try {
+                tg.MainButton.hide();
+                if (tg.SecondaryButton) {
+                    tg.SecondaryButton.hide();
+                }
+            } catch (error) {
+                console.error('Error hiding buttons:', error);
+            }
+            
+            // Инициализация завершена
+            tg.ready();
+            
+        } else {
+            // Повторяем попытку через короткое время
+            setTimeout(initTelegramWebApp, 100);
         }
-    } else {
-        console.log('BackButton not supported, adding custom button');
-        addCustomBackButton(); // Добавляем кастомную кнопку
     }
+    
+    // Запускаем инициализацию
+    initTelegramWebApp();
 	
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.LoginInput') && !e.target.closest('.LoginButton')) {
