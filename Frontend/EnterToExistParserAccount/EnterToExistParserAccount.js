@@ -5,31 +5,42 @@ console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
 	tg.ready();
 	
-     // Определяем версию и настраиваем кнопку "Назад" соответствующим образом
-    if (tg && tg.initDataUnsafe) {
-        const webAppVersion = parseFloat(tg.version);
-        console.log('WebApp version:', webAppVersion);
+     const webAppVersion = parseFloat(tg.version);
+    console.log('WebApp version:', webAppVersion);
+    
+    // Для версий 6.1+ используем стандартный BackButton
+    if (webAppVersion >= 6.1 && tg.BackButton && typeof tg.BackButton.show === 'function') {
+        tg.BackButton.show(); 
+        tg.BackButton.onClick(goBack);
+        console.log('Using standard BackButton');
+    } 
+    // Для версии 6.0 используем правильный подход
+    else if (webAppVersion === 6.0) {
+        console.log('Using web_app_setup_back_button for version 6.0');
         
-        if (webAppVersion >= 6.1 && tg.BackButton && typeof tg.BackButton.show === 'function') {
-            // Для версий 6.1+ используем стандартный BackButton
-            tg.BackButton.show(); 
-            tg.BackButton.onClick(goBack);
-            console.log('Using standard BackButton');
-        } else if (webAppVersion === 6.0) {
-            // Для версии 6.0 используем события
-            console.log('Using web_app_setup_back_button for version 6.0');
-            
-            // Показываем кнопку "Назад"
-            if (tg.sendData) {
+        // ПРАВИЛЬНЫЙ способ для 6.0
+        if (tg && tg.isVersionAtLeast('6.0')) {
+            // Используем правильный метод для показа кнопки
+            try {
+                // Вариант 1: Через sendData
                 tg.sendData(JSON.stringify({
                     method: 'web_app_setup_back_button',
                     params: { is_visible: true }
                 }));
+                
+                // Вариант 2: Через postEvent (более прямой)
+                tg.postEvent('web_app_setup_back_button', { is_visible: true });
+                
+                // Вешаем обработчик
+                tg.onEvent('back_button_pressed', goBack);
+                
+            } catch (error) {
+                console.log('Error setting up back button:', error);
             }
-            
-            // Обработчик события back_button_pressed
-            tg.onEvent('back_button_pressed', goBack);
         }
+    } else {
+        console.log('BackButton not supported, adding custom button');
+        addCustomBackButton(); // Добавляем кастомную кнопку
     }
 	
     document.addEventListener('click', (e) => {
