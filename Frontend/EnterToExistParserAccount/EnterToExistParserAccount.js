@@ -3,47 +3,40 @@ const tg = window.Telegram.WebApp;
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
-	  function initTelegramWebApp() {
+	function initTelegramWebApp() {
         if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
-            const tg = Telegram.WebApp;
+        const tg = Telegram.WebApp;
+        
+        console.log('WebApp version:', tg.version);
+        
+        try {
+            tg.postEvent('web_app_setup_back_button', {is_visible: true});
+            console.log('Back button SHOW command sent');
             
-            console.log('WebApp version:', tg.version);
+            // Обработчик нажатия кнопки назад
+            tg.onEvent('back_button_pressed', function() {
+                console.log('Back button pressed - closing app');
+                tg.close();
+            });
             
-            // Настройка кнопки назад с проверкой доступности
-            try {
-                if (typeof tg.postEvent === 'function') {
-                    tg.postEvent('web_app_setup_back_button', {is_visible: true});
-                    
-                    // Обработчик кнопки назад
-                    tg.BackButton.onClick(function() {
-                        // Ваша логика при нажатии назад
-                        tg.close();
-                    });
-                    
-                    tg.BackButton.show();
-                }
-            } catch (error) {
-                console.error('Error setting up back button:', error);
-            }
-            
-            // Скрываем основные кнопки
-            try {
-                tg.MainButton.hide();
-                if (tg.SecondaryButton) {
-                    tg.SecondaryButton.hide();
-                }
-            } catch (error) {
-                console.error('Error hiding buttons:', error);
-            }
-            
-            // Инициализация завершена
-            tg.ready();
-            
-        } else {
-            // Повторяем попытку через короткое время
-            setTimeout(initTelegramWebApp, 100);
+        } catch (error) {
+            console.error('Error setting up back button:', error);
         }
+        
+        // Скрываем основные кнопки (это нормально)
+        tg.MainButton.hide();
+        if (tg.SecondaryButton) {
+            tg.SecondaryButton.hide();
+        }
+        
+        // Инициализация завершена
+        tg.ready();
+        
+      } else {
+        setTimeout(initTelegramWebApp, 100);
+      }
     }
+
     
     // Запускаем инициализацию
     initTelegramWebApp();
