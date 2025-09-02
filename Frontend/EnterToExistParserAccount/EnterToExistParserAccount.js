@@ -3,51 +3,41 @@ const tg = window.Telegram.WebApp;
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
-	   function initTelegramWebApp() {
+	     function initTelegramWebApp() {
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
             
             console.log('WebApp version:', tg.version);
             tg.ready();
 
-            // 1. СКРЫВАЕМ ОСНОВНЫЕ КНОПКИ
             tg.MainButton.hide();
             if (tg.SecondaryButton) {
                 tg.SecondaryButton.hide();
             }
 
-            // 2. НАСТРОЙКА КНОПКИ НАЗАД ДЛЯ 6.0+
-            if (typeof tg.postEvent === 'function') {
-                // ПОКАЗЫВАЕМ кнопку "Назад"
-                tg.postEvent('web_app_setup_back_button', { 
+            if (window.Telegram.WebApp.postEvent) {
+                window.Telegram.WebApp.postEvent('web_app_setup_back_button', { 
                     is_visible: true 
                 });
                 
                 console.log('Back button shown via postEvent');
                 
-                // ОБРАБОТЧИК нажатия кнопки "Назад"
                 tg.onEvent('back_button_pressed', function() {
-                    console.log('Back button pressed - closing app');
-                    tg.close();
+                    console.log('Back button pressed - going back');
+                    goBack(); 
                 });
                 
             } else {
                 console.warn('postEvent not available - creating fallback');
-            }
-
-            // 3. Дополнительные настройки (опционально)
-            try {
-                tg.postEvent('web_app_setup_closing_behavior', { 
-                    need_confirmation: false 
-                });
-            } catch (error) {
-                console.error('Error setting closing behavior:', error);
+                createFallbackBackButton();
             }
             
         } else {
             setTimeout(initTelegramWebApp, 100);
         }
     }
+
+
 
     initTelegramWebApp();
 	
@@ -129,28 +119,12 @@ function setupBackButton(tg) {
     }
 }
 
-function createFallbackBackButton() {
-    // Показываем кнопку "Назад" через Telegram
-    try {
-        window.parent.postMessage(JSON.stringify({
-            eventType: 'web_app_setup_back_button',
-            params: { is_visible: true }
-        }), '*');
-
-        window.addEventListener('message', function(event) {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.eventType === 'back_button_pressed') {
-                    console.log('Fallback back button pressed');
-                    window.Telegram.WebApp.close(); // Или window.history.back()
-                }
-            } catch (e) {
-                // Не наше сообщение
-            }
-        });
-
-        console.log('Fallback back button setup complete');
-    } catch (error) {
-        console.error('Error setting fallback back button:', error);
+function goBack() {
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
+            window.Telegram.WebApp.close();
+        }
     }
 }
