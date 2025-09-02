@@ -3,64 +3,36 @@ const tg = window.Telegram.WebApp;
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
-	  function initTelegramWebApp() {
-        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
-            const tg = Telegram.WebApp;
-            
-            console.log('WebApp version:', tg.version);
-            
-            // НАСТРОЙКА КНОПКИ НАЗАД через postMessage
-            try {
-                // Отправляем команду для показа кнопки "Назад"
-                window.parent.postMessage(JSON.stringify({
-                    eventType: 'web_app_setup_back_button',
-                    params: { is_visible: true }
-                }), '*');
-                
-                console.log('Back button setup command sent');
-                
-                // Обработчик нажатия кнопки "Назад"
-                window.addEventListener('message', function(event) {
-                    try {
-                        const data = JSON.parse(event.data);
-                        if (data.eventType === 'back_button_pressed') {
-                            console.log('Back button pressed - closing app');
-                            tg.close();
-                        }
-                    } catch (e) {
-                        // Не our message
-                    }
-                });
-                
-            } catch (error) {
-                console.error('Error setting up back button:', error);
+	 function initTelegramWebApp() {
+        const checkInterval = setInterval(() => {
+            if (window.Telegram && window.Telegram.WebApp) {
+                clearInterval(checkInterval);
+
+                const tg = window.Telegram.WebApp;
+
+                console.log('WebApp version:', tg.version);
+                console.log('пробуем пробуем');
+                tg.ready();
+
+                tg.MainButton.hide();
+                if (tg.SecondaryButton) {
+                    tg.SecondaryButton.hide();
+                }
+
+                setupBackButton(tg);
+
+                try {
+                    window.parent.postMessage(JSON.stringify({
+                        eventType: 'web_app_setup_closing_behavior',
+                        params: { need_confirmation: false }
+                    }), '*');
+                } catch (error) {
+                    console.error('Error setting closing behavior:', error);
+                }
             }
-            
-            // Настройка поведения при закрытии (опционально)
-            try {
-                window.parent.postMessage(JSON.stringify({
-                    eventType: 'web_app_setup_closing_behavior',
-                    params: { need_confirmation: false }
-                }), '*');
-            } catch (error) {
-                console.error('Error setting closing behavior:', error);
-            }
-            
-            // Скрываем основные кнопки
-            tg.MainButton.hide();
-            if (tg.SecondaryButton) {
-                tg.SecondaryButton.hide();
-            }
-            
-            // Инициализация завершена
-            tg.ready();
-            
-        } else {
-            setTimeout(initTelegramWebApp, 100);
-        }
+        }, 100);
     }
 
-    
     initTelegramWebApp();
 	
     document.addEventListener('click', (e) => {
@@ -120,5 +92,23 @@ function goBack() {
         window.history.back(); 
     } else if (tg && tg.close) {
         tg.close(); 
+    }
+}
+function setupBackButton(tg) {
+    if (tg.BackButton) {
+        try {
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => {
+                console.log('Back button clicked');
+               window.history.back();
+            });
+            console.log('Back button initialized');
+        } catch (error) {
+            console.error('Error with BackButton:', error);
+            createFallbackBackButton(); 
+        }
+    } else {
+        console.warn('BackButton API not available, using fallback');
+        createFallbackBackButton();
     }
 }
