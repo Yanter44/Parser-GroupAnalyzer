@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.log('WebApp version:', tg.version);
                 console.log('пробуем пробуем');
                 tg.ready();
+                alert(`WebApp version: ${tg.version}\nPlatform: ${tg.platform}`);
 
                 tg.MainButton.hide();
                 if (tg.SecondaryButton) {
