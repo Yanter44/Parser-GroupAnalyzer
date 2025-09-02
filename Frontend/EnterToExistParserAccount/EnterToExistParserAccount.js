@@ -4,26 +4,38 @@ console.log(config.API_BASE);
 console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
 	function initTelegramWebApp() {
-        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+    if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
         const tg = Telegram.WebApp;
         
         console.log('WebApp version:', tg.version);
         
+        // НАСТРОЙКА КНОПКИ НАЗАД - ПРАВИЛЬНЫЙ СПОСОБ
         try {
-            tg.postEvent('web_app_setup_back_button', {is_visible: true});
-            console.log('Back button SHOW command sent');
-            
-            // Обработчик нажатия кнопки назад
-            tg.onEvent('back_button_pressed', function() {
-                console.log('Back button pressed - closing app');
-                tg.close();
-            });
+            // Правильный способ для версии 6.0 - через window.Telegram.WebApp.postEvent
+            if (window.Telegram.WebApp.postEvent) {
+                window.Telegram.WebApp.postEvent('web_app_setup_back_button', {is_visible: true});
+                console.log('Back button SHOW command sent');
+                
+                // Обработчик нажатия кнопки назад
+                tg.onEvent('back_button_pressed', function() {
+                    console.log('Back button pressed - closing app');
+                    tg.close();
+                });
+            } else {
+                // Альтернативный способ через BackButton объект
+                if (tg.BackButton) {
+                    tg.BackButton.onClick(function() {
+                        tg.close();
+                    });
+                    tg.BackButton.show();
+                }
+            }
             
         } catch (error) {
             console.error('Error setting up back button:', error);
         }
         
-        // Скрываем основные кнопки (это нормально)
+        // Скрываем основные кнопки (это работает правильно)
         tg.MainButton.hide();
         if (tg.SecondaryButton) {
             tg.SecondaryButton.hide();
@@ -32,10 +44,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // Инициализация завершена
         tg.ready();
         
-      } else {
+    } else {
         setTimeout(initTelegramWebApp, 100);
-      }
     }
+}
 
     
     // Запускаем инициализацию
