@@ -29,7 +29,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 
             } else {
                 console.warn('postEvent not available - creating fallback');
-                createFallbackBackButton();
             }
             
         } else {
@@ -92,31 +91,6 @@ document.addEventListener("DOMContentLoaded", () => {
 function isValidGuid(guid) {
     const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return regex.test(guid);
-}
-function goBack() {
-    if (window.history.length > 1) {
-        window.history.back(); 
-    } else if (tg && tg.close) {
-        tg.close(); 
-    }
-}
-function setupBackButton(tg) {
-    if (tg.BackButton && typeof tg.BackButton.show === "function") {
-        try {
-            tg.BackButton.show();
-            tg.BackButton.onClick(() => {
-                console.log('Back button clicked');
-                window.history.back(); // Или tg.close()
-            });
-            console.log('Back button initialized');
-        } catch (error) {
-            console.error('Error with BackButton:', error);
-            createFallbackBackButton();
-        }
-    } else {
-        console.warn('BackButton API not supported — using fallback');
-        createFallbackBackButton();
-    }
 }
 
 function goBack() {
