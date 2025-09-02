@@ -3,7 +3,7 @@ const tg = window.Telegram.WebApp;
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
-	function initTelegramWebApp() {
+	 function initTelegramWebApp() {
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
             
@@ -16,15 +16,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 tg.SecondaryButton.hide();
             }
 
+            // ОТЛАДКА: проверяем доступные методы
+            console.log('Available methods:');
+            console.log('postEvent:', typeof window.Telegram?.WebApp?.postEvent);
+            console.log('BackButton:', !!tg.BackButton);
+            console.log('parent:', window.parent !== window);
+            
             // ПОПЫТКА ВЫЗВАТЬ НАТИВНУЮ КНОПКУ TELEGRAM
             try {
+                let commandSent = false;
+                
                 // Способ 1: Через postMessage (основной для web)
                 if (window.parent && window.parent !== window) {
                     window.parent.postMessage(JSON.stringify({
                         eventType: 'web_app_setup_back_button',
                         params: { is_visible: true }
                     }), '*');
-                    console.log('Native back button requested via postMessage');
+                    console.log('✅ Native back button requested via postMessage');
+                    commandSent = true;
                 }
                 
                 // Способ 2: Через расширенный API (если доступно)
@@ -32,12 +41,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     window.Telegram.WebApp.postEvent('web_app_setup_back_button', { 
                         is_visible: true 
                     });
-                    console.log('Native back button requested via postEvent');
+                    console.log('✅ Native back button requested via postEvent');
+                    commandSent = true;
+                }
+                
+                if (!commandSent) {
+                    console.warn('❌ No back button methods available');
+
                 }
                 
                 // Обработчик нативной кнопки
                 tg.onEvent('back_button_pressed', function() {
-                    console.log('Native back button pressed - going back');
+                    console.log('🎯 Native back button pressed - going back');
                     if (window.history.length > 1) {
                         window.history.back();
                     } else {
@@ -47,8 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 
             } catch (error) {
                 console.error('Error requesting native button:', error);
-                // Если не получилось, покажем alert с инструкцией
-                alert('Кнопка "Назад" недоступна в этой версии Telegram. Используйте жесты или системную кнопку "Назад".');
             }
             
         } else {
