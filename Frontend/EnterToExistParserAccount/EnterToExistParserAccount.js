@@ -95,20 +95,46 @@ function goBack() {
     }
 }
 function setupBackButton(tg) {
-    if (tg.BackButton) {
+    if (tg.BackButton && typeof tg.BackButton.show === "function") {
         try {
             tg.BackButton.show();
             tg.BackButton.onClick(() => {
                 console.log('Back button clicked');
-               window.history.back();
+                window.history.back(); // Или tg.close()
             });
             console.log('Back button initialized');
         } catch (error) {
             console.error('Error with BackButton:', error);
-            createFallbackBackButton(); 
+            createFallbackBackButton();
         }
     } else {
-        console.warn('BackButton API not available, using fallback');
+        console.warn('BackButton API not supported — using fallback');
         createFallbackBackButton();
+    }
+}
+
+function createFallbackBackButton() {
+    // Показываем кнопку "Назад" через Telegram
+    try {
+        window.parent.postMessage(JSON.stringify({
+            eventType: 'web_app_setup_back_button',
+            params: { is_visible: true }
+        }), '*');
+
+        window.addEventListener('message', function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.eventType === 'back_button_pressed') {
+                    console.log('Fallback back button pressed');
+                    window.Telegram.WebApp.close(); // Или window.history.back()
+                }
+            } catch (e) {
+                // Не наше сообщение
+            }
+        });
+
+        console.log('Fallback back button setup complete');
+    } catch (error) {
+        console.error('Error setting fallback back button:', error);
     }
 }
