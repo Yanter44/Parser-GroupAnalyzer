@@ -3,54 +3,64 @@ const tg = window.Telegram.WebApp;
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
-	function initTelegramWebApp() {
-    if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
-        const tg = Telegram.WebApp;
-        
-        console.log('WebApp version:', tg.version);
-        
-        // НАСТРОЙКА КНОПКИ НАЗАД - ПРАВИЛЬНЫЙ СПОСОБ
-        try {
-            // Правильный способ для версии 6.0 - через window.Telegram.WebApp.postEvent
-            if (window.Telegram.WebApp.postEvent) {
-                window.Telegram.WebApp.postEvent('web_app_setup_back_button', {is_visible: true});
-                console.log('Back button SHOW command sent');
+	  function initTelegramWebApp() {
+        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+            const tg = Telegram.WebApp;
+            
+            console.log('WebApp version:', tg.version);
+            
+            // НАСТРОЙКА КНОПКИ НАЗАД через postMessage
+            try {
+                // Отправляем команду для показа кнопки "Назад"
+                window.parent.postMessage(JSON.stringify({
+                    eventType: 'web_app_setup_back_button',
+                    params: { is_visible: true }
+                }), '*');
                 
-                // Обработчик нажатия кнопки назад
-                tg.onEvent('back_button_pressed', function() {
-                    console.log('Back button pressed - closing app');
-                    tg.close();
+                console.log('Back button setup command sent');
+                
+                // Обработчик нажатия кнопки "Назад"
+                window.addEventListener('message', function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.eventType === 'back_button_pressed') {
+                            console.log('Back button pressed - closing app');
+                            tg.close();
+                        }
+                    } catch (e) {
+                        // Не our message
+                    }
                 });
-            } else {
-                // Альтернативный способ через BackButton объект
-                if (tg.BackButton) {
-                    tg.BackButton.onClick(function() {
-                        tg.close();
-                    });
-                    tg.BackButton.show();
-                }
+                
+            } catch (error) {
+                console.error('Error setting up back button:', error);
             }
             
-        } catch (error) {
-            console.error('Error setting up back button:', error);
+            // Настройка поведения при закрытии (опционально)
+            try {
+                window.parent.postMessage(JSON.stringify({
+                    eventType: 'web_app_setup_closing_behavior',
+                    params: { need_confirmation: false }
+                }), '*');
+            } catch (error) {
+                console.error('Error setting closing behavior:', error);
+            }
+            
+            // Скрываем основные кнопки
+            tg.MainButton.hide();
+            if (tg.SecondaryButton) {
+                tg.SecondaryButton.hide();
+            }
+            
+            // Инициализация завершена
+            tg.ready();
+            
+        } else {
+            setTimeout(initTelegramWebApp, 100);
         }
-        
-        // Скрываем основные кнопки (это работает правильно)
-        tg.MainButton.hide();
-        if (tg.SecondaryButton) {
-            tg.SecondaryButton.hide();
-        }
-        
-        // Инициализация завершена
-        tg.ready();
-        
-    } else {
-        setTimeout(initTelegramWebApp, 100);
     }
-}
 
     
-    // Запускаем инициализацию
     initTelegramWebApp();
 	
     document.addEventListener('click', (e) => {
