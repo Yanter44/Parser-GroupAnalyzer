@@ -16,13 +16,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 tg.BackButton.hide();
             }
 
-            tg.MainButton.setText("Закрыть");
-            tg.MainButton.show();
-            tg.MainButton.onClick(() => {
-                console.log("Закрытие приложения");
-                tg.close();
-            });
-
         } else {
             setTimeout(initTelegramWebApp, 100);
         }
