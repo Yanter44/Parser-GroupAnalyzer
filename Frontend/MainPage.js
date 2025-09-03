@@ -1,9 +1,35 @@
 
+const tg = window.Telegram.WebApp;
 var primarybutton = document.getElementsByClassName('primaryButton')[0];
 var secondaryButton = document.getElementsByClassName('secondaryButton')[0];
-
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation); 
+document.addEventListener("DOMContentLoaded", () => {
+    function initTelegramWebApp() {
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+
+            console.log('WebApp version:', tg.version);
+            tg.ready();
+
+            if (tg.BackButton) {
+                tg.BackButton.hide();
+            }
+
+            tg.MainButton.setText("Закрыть");
+            tg.MainButton.show();
+            tg.MainButton.onClick(() => {
+                console.log("Закрытие приложения");
+                tg.close();
+            });
+
+        } else {
+            setTimeout(initTelegramWebApp, 100);
+        }
+    }
+
+    initTelegramWebApp();
+});
 
 primarybutton.addEventListener('click', () => {
   window.location.href = `${config.DefaultStartFileLocation}/CreateAdminPanelPage/CreateAdminPanelPage.html`;

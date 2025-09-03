@@ -7,16 +7,14 @@ document.addEventListener("DOMContentLoaded", () => {
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
             
-            console.log('WebApp version:', tg.version); // Теперь будет показывать 7.7
+            console.log('WebApp version:', tg.version);
             tg.ready();
 
-            // Скрываем основные кнопки
             tg.MainButton.hide();
             if (tg.SecondaryButton) {
                 tg.SecondaryButton.hide();
             }
 
-            // ТЕПЕРЬ BackButton БУДЕТ РАБОТАТЬ!
             if (tg.BackButton) {
                 tg.BackButton.show();
                 tg.BackButton.onClick(function() {
