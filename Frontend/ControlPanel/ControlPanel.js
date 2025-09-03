@@ -167,7 +167,6 @@ async function InitializePage() {
                     const timeElem = document.querySelector(".RemainingParsingTime");
                     if (timeElem) timeElem.remove();
                 }
-                  let span = document.querySelector(".RemainingTimeToStopParser");
 
                 startTickTimer(remainingParsingTimeHoursMinutes);
             } else {
