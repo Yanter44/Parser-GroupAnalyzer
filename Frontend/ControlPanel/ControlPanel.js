@@ -155,17 +155,20 @@ async function InitializePage() {
             if (isParsingStarted) {
                 setInputsEnabled(false);
 
-                if (remainingParsingTimeHoursMinutes && remainingParsingTimeHoursMinutes !== "00:00:00") {
+            if (remainingParsingTimeHoursMinutes && remainingParsingTimeHoursMinutes !== "00:00:00") {
                     let timeElem = document.querySelector(".RemainingTimeToStopParser");
-                    const btn = document.querySelector(".StartParserButton, .StopParserButton");
-                    if (btn && btn.parentNode) {
-                        btn.parentNode.insertBefore(timeElem, btn.nextSibling);
-                    }
-                    timeElem.textContent = `${remainingParsingTimeHoursMinutes}`;
+                    const buttonHandler = document.querySelector(".ParserButtonHandler");
+
+                if (buttonHandler && timeElem) {
+                        buttonHandler.appendChild(timeElem);
+                }
+                   timeElem.textContent = `${remainingParsingTimeHoursMinutes}`;
                 } else {
                     const timeElem = document.querySelector(".RemainingParsingTime");
                     if (timeElem) timeElem.remove();
                 }
+                  let span = document.querySelector(".RemainingTimeToStopParser");
+
                 startTickTimer(remainingParsingTimeHoursMinutes);
             } else {
                 setInputsEnabled(true);
@@ -367,7 +370,6 @@ function startTickTimer(timeString) {
         }
     }
     
-
     span.style.display = 'block'
 
     span.style.marginLeft = "10px";
@@ -528,7 +530,6 @@ async function startParsing() {
         startTickTimer(remainTime);
         startSignalR();
         updateParserButton('stop');
-
     } catch (error) {
         console.error('Ошибка при запуске парсинга:', error);
         updateParserButton('start');
