@@ -155,14 +155,13 @@ async function InitializePage() {
             if (isParsingStarted) {
                 setInputsEnabled(false);
 
-            if (remainingParsingTimeHoursMinutes && remainingParsingTimeHoursMinutes !== "00:00:00") {
+                if (remainingParsingTimeHoursMinutes && remainingParsingTimeHoursMinutes !== "00:00:00") {
                     let timeElem = document.querySelector(".RemainingTimeToStopParser");
-                    const buttonHandler = document.querySelector(".ParserButtonHandler");
-
-                if (buttonHandler && timeElem) {
-                        buttonHandler.appendChild(timeElem);
-                }
-                   timeElem.textContent = `${remainingParsingTimeHoursMinutes}`;
+                    const btn = document.querySelector(".StartParserButton, .StopParserButton");
+                    if (btn && btn.parentNode) {
+                        btn.parentNode.insertBefore(timeElem, btn.nextSibling);
+                    }
+                    timeElem.textContent = `${remainingParsingTimeHoursMinutes}`;
                 } else {
                     const timeElem = document.querySelector(".RemainingParsingTime");
                     if (timeElem) timeElem.remove();
