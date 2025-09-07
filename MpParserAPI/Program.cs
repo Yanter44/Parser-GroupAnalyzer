@@ -11,6 +11,7 @@ using MpParserAPI.Middlewares;
 using MpParserAPI.Services;
 using MpParserAPI.Services.Admin;
 using Serilog;
+using TL;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
@@ -18,13 +19,18 @@ builder.Services.AddControllers();
 builder.Services.AddDbContextFactory<ParserDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("ParserDb")));
 
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
-  //  .WriteTo.Seq("http://localhost:5341")
-    .CreateLogger();
 
 
-builder.Host.UseSerilog();
+var seqServerUrl = builder.Configuration["Seq:ServerUrl"];
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+        .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Seq(seqServerUrl);
+});
 
 builder.Services.AddScoped<IParser, ParserService>();
 builder.Services.AddScoped<INotify, NotifyService>();
@@ -34,8 +40,11 @@ builder.Services.AddSingleton<IParserDataStorage, ParserDataStorage>();
 builder.Services.AddScoped<IRedis, RedisService>();
 builder.Services.AddTransient<IGenerator, Generator>();
 builder.Services.AddScoped<IAdmin, AdminService>();
+builder.Services.AddHostedService<ParserQueueProcessor>();
+builder.Services.AddScoped<IUpdateHandler, UpdateHandler>();
 builder.Services.AddScoped<ISpaceProxy, SpaceProxyService>();
 builder.Services.AddScoped<ISubscriptionManager, SubscriptionManager>();
+builder.Services.AddSingleton<IMessageQueueService, MessageQueueService>();
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient();
 

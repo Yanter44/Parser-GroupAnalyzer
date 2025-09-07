@@ -151,7 +151,8 @@ namespace MpParserAPI.Controllers
             return Ok(new { remainingParsingTimeHoursMinutes = formattedTime });  
         }
 
-        [ParserAuthorize]        [HttpPost("AddNewSpamMessage")]
+        [ParserAuthorize] 
+        [HttpPost("AddNewSpamMessage")]
         public async Task<IActionResult> AddNewSpamMessage(AddNewSpamMessageDto messageDto)
         {
             var parserId = (Guid)HttpContext.Items["ParserId"];

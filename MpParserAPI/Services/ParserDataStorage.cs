@@ -18,6 +18,10 @@ namespace MpParserAPI.Services
         {
             return _tempClients[TempAuthId];
         }
+        public List<Guid> GetAllParserIds()
+        {
+            return _parsers.Keys.ToList();
+        }
         public void AddTempClient(Guid tempAuthId, Client client)
         {
             _tempClients[tempAuthId] = client;

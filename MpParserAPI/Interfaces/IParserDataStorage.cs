@@ -28,5 +28,6 @@ namespace MpParserAPI.Interfaces
 
         bool TryGetTempClientByPhone(string phone, out Client client);
         void RemoveTempClientByPhone(string phone);
+        List<Guid> GetAllParserIds();
     }
 }
