@@ -392,18 +392,18 @@ namespace MpParserAPI.Services
             return isphonealreadyused;
         }
 
-        public Task<OperationResult<ParserAuthResultDto>> EnterToSessionByKeyAndPassword(Guid parserId, string sessionPassword)
+        public  async Task<OperationResult<ParserAuthResultDto>> EnterToSessionByKeyAndPassword(Guid parserId, string sessionPassword)
         {
             if (_parserStorage.TryGetParser(parserId, out var parser) && parser.Password == sessionPassword)
             {
-                return Task.FromResult(OperationResult<ParserAuthResultDto>.Ok(new ParserAuthResultDto
+               await parser.Client.LoginUserIfNeeded();
+                return OperationResult<ParserAuthResultDto>.Ok(new ParserAuthResultDto
                 {
                     ParserId = parserId,
                     Password = sessionPassword
-                }, "Вход в сессию выполнен."));
+                }, "Вход в сессию выполнен.");
             }
-
-            return Task.FromResult(OperationResult<ParserAuthResultDto>.Fail("Неверный ключ сессии или пароль."));
+            return OperationResult<ParserAuthResultDto>.Fail("Неверный ключ сессии или пароль.");
         }
     }
 }
