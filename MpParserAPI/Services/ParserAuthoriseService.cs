@@ -89,7 +89,22 @@ namespace MpParserAPI.Services
                             return proxy.CreateConnection(address, port);
                         };
                     }
-                    await parserData.Client.LoginUserIfNeeded();
+                    await parserData.Client.ConnectAsync();
+
+                    if (parserData.Client.User == null)
+                    {
+                        // Сессия невалидна -> нужна авторизация
+                        parserData.AuthState = TelegramAuthState.Unauthorized;
+                        _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
+                        continue;
+                    }
+
+                    // Всё ок -> авторизован
+                    parserData.AuthState = TelegramAuthState.Authorized;
+                    _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
+
+
+
                     parserData.AuthState = TelegramAuthState.Authorized;
                     _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
                 }
@@ -392,18 +407,17 @@ namespace MpParserAPI.Services
             return isphonealreadyused;
         }
 
-        public  async Task<OperationResult<ParserAuthResultDto>> EnterToSessionByKeyAndPassword(Guid parserId, string sessionPassword)
+        public  Task<OperationResult<ParserAuthResultDto>> EnterToSessionByKeyAndPassword(Guid parserId, string sessionPassword)
         {
             if (_parserStorage.TryGetParser(parserId, out var parser) && parser.Password == sessionPassword)
             {
-               await parser.Client.LoginUserIfNeeded();
-                return OperationResult<ParserAuthResultDto>.Ok(new ParserAuthResultDto
+                return Task.FromResult(OperationResult<ParserAuthResultDto>.Ok(new ParserAuthResultDto
                 {
                     ParserId = parserId,
                     Password = sessionPassword
-                }, "Вход в сессию выполнен.");
+                }, "Вход в сессию выполнен."));
             }
-            return OperationResult<ParserAuthResultDto>.Fail("Неверный ключ сессии или пароль.");
+            return Task.FromResult(OperationResult<ParserAuthResultDto>.Fail("Неверный ключ сессии или пароль."));
         }
     }
 }
