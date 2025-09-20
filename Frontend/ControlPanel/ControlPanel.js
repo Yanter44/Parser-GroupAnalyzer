@@ -157,6 +157,11 @@ async function InitializePage() {
 
                 if (remainingParsingTimeHoursMinutes && remainingParsingTimeHoursMinutes !== "00:00:00") {
                     let timeElem = document.querySelector(".RemainingTimeToStopParser");
+                    if (!timeElem) {
+                        timeElem = document.createElement("div");
+                        timeElem.className = "RemainingTimeToStopParser";
+                    }
+                    
                     const btn = document.querySelector(".StartParserButton, .StopParserButton");
                     if (btn && btn.parentNode) {
                         btn.parentNode.insertBefore(timeElem, btn.nextSibling);
