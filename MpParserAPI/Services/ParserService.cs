@@ -370,7 +370,15 @@ public class ParserService : IParser
             }
 
             await _redisService.DeleteKeyAsync(parserId.ToString());
-            await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ParsingIsStoped");
+
+            var TotalParsingTime = _subscriptionManager.GetTotalParsingTime(parser);
+            var formattedTotalParsingTime = TimeFormatterHelper.ToHumanReadableString(TotalParsingTime);
+
+            await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ParsingIsStoped", new
+            {
+                TotalParsingTime = formattedTotalParsingTime
+            });
+
         }
     }
 
@@ -417,6 +425,15 @@ public class ParserService : IParser
 
         var allValuesAfter = await _redisService.GetAllSetMembersAsync(redisKey);
         _logger.LogInformation("Значения в Redis под ключом {Key} после добавления: {Values}", redisKey, string.Join(", ", allValuesAfter));
+
+        var logsToRemove = await database.ParserLogsTable
+                        .Where(x => x.ParserId == parserId && x.MessageText == modelDto.Message)
+                        .ToListAsync();
+
+        if (logsToRemove.Any())
+        {
+            database.ParserLogsTable.RemoveRange(logsToRemove);
+        }
 
         await database.SaveChangesAsync();
 

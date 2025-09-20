@@ -290,12 +290,6 @@ async function saveTags() {
                     .map(line => line.trim())
                     .filter(line => line.length > 0);
 
-                const invalidLines = lines.filter(line => line.includes(',') || line.includes('\t') || line.includes(' '));
-                if (invalidLines.length > 0) {
-                    alert("Ошибка: файл должен содержать только одно слово или фразу на строку без пробелов, табов и запятых.");
-                    return;
-                }
-
                 combinedTags.push(...lines);
             } catch (err) {
                 console.error("Ошибка при чтении файла:", err);
@@ -579,18 +573,33 @@ function startSignalR() {
     connection.on("ParsingIsStoped", () => {
         setInputsEnabled(true);
         updateParserButton('start');
+        console.log("проверка прошла");
     });
     connection.on("ParserChangedProxy", (remainingTime) => {
         updateParserButton('start'); 
         startTickTimer(remainingTime); 
         setInputsEnabled(false); 
     });
-
+    connection.on("ParsingIsStoped", (totalparsingtime) => {
+      updateTotalParsingTime(totalparsingtime);
+        console.log("проверка прошла2");
+    });
     connection.start()
         .then(() => console.log("SignalR подключен"))
         .catch(err => console.error("Ошибка подключения SignalR:", err));
 }
 
+function updateTotalParsingTime(totalparsingtime){
+      const totalparsingTimeElement = document.getElementsByClassName("TotalParsingTimeValueText")[0];
+            if (totalparsingTimeElement) {
+                if (totalParsingTime === "") {
+                    totalparsingTimeElement.textContent = "0м";
+                } else {
+                    totalparsingTimeElement.textContent = totalparsingtime;
+                }
+            }
+    console.log("попытка прошла");
+}
 
 function addMessageToList(data) {
     const container = document.querySelector(".DataList");
