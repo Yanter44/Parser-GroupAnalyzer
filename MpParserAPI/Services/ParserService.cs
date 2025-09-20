@@ -62,7 +62,7 @@ public class ParserService : IParser
                     if (_parserStorage.ContainsParser(parserId))
                     {
                         await _messageQueueService.EnqueueMessageAsync(parserId, updates, _parserStorage.GetParser(parserId));
-                        _logger.LogTrace("Добавлено сообщение в очередь парсера {ParserId}", parserId);
+                        _logger.LogInformation("Добавлено сообщение в очередь парсера {ParserId}", parserId);
                     }
                 }
             }

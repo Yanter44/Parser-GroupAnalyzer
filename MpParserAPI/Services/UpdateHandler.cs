@@ -41,7 +41,7 @@ namespace MpParserAPI.Services
                 return;
 
             _parserStorage.TryGetParser(parserId, out var parser);
-
+            _logger.LogInformation("Начали обработку сообщения {ParserId}", parserId);
             var parserData = parser;
             if (update.Update is UpdatesBase updates)
             {
@@ -165,9 +165,9 @@ namespace MpParserAPI.Services
                                             {
                                                 messageLink = $"https://t.me/{groupUsername}/{msg.id}";
                                             }
-
+                                            _logger.LogInformation("Подходим к завершению обработки сообщения {ParserId}", parserId);
                                             await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"🙍‍Пользователь: {existingTelegramUser.FirstName}\n\n💬Сообщение: {msg.message}\n\n👩‍👩‍👧‍👦Группа: {groupTitle}\n🔖Никнейм: @{user.username}", messageLink);
-
+                                            _logger.LogInformation("отправили нотифай в бот {ParserId}", parserId);
                                             await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ReceiveMessage", new
                                             {
                                                 ProfileImageUrl = imageUrl,
@@ -177,7 +177,7 @@ namespace MpParserAPI.Services
                                                 MessageTime = parserlog.CreatedAt.ToLocalTime().ToString("HH:mm")
 
                                             });
-
+                              
                                             _logger.LogInformation("""
                                                  Для парсера {ParserId} пришло сообщение:
                                                  Пользователь: {UserId} ({FirstName} {LastName})
