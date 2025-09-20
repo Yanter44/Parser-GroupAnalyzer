@@ -89,22 +89,7 @@ namespace MpParserAPI.Services
                             return proxy.CreateConnection(address, port);
                         };
                     }
-                    await parserData.Client.ConnectAsync();
-
-                    if (parserData.Client.User == null)
-                    {
-                        // Сессия невалидна -> нужна авторизация
-                        parserData.AuthState = TelegramAuthState.Unauthorized;
-                        _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
-                        continue;
-                    }
-
-                    // Всё ок -> авторизован
-                    parserData.AuthState = TelegramAuthState.Authorized;
-                    _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
-
-
-
+                    await parserData.Client.LoginUserIfNeeded();
                     parserData.AuthState = TelegramAuthState.Authorized;
                     _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
                 }
