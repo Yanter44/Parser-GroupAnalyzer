@@ -331,7 +331,8 @@ public class ParserService : IParser
         var spamWords = parserProfile?.SpamWords?.ToArray();
         if (spamWords?.Length > 0)
         {
-            await _redisService.SetAddRangeAsync(parserId.ToString(), spamWords); 
+            var spamHashes = spamWords.Select(HashHelper.ComputeSha256Hash).ToArray();
+            await _redisService.SetAddRangeAsync(parserId.ToString(), spamHashes);
         }
         return OperationResult<object>.Ok($"Парсинг был успешно запущен для {parserId}");
     }
@@ -409,7 +410,9 @@ public class ParserService : IParser
         _logger.LogInformation("Существующие значения в Redis под ключом {Key}: {Values}", redisKey, string.Join(", ", existingValues));
 
         string hash = HashHelper.ComputeSha256Hash(modelDto.Message);
+
         _logger.LogInformation("Hash для сообщения: {Hash}", hash);
+
         await _redisService.SetAddAsync(redisKey, hash);
 
         var allValuesAfter = await _redisService.GetAllSetMembersAsync(redisKey);
