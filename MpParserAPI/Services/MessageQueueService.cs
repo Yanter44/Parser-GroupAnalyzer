@@ -29,7 +29,7 @@ public class MessageQueueService : IMessageQueueService, IDisposable
                 var updateData = new UpdateData(update, parserData, DateTime.UtcNow);
                 queue.Enqueue(updateData);
 
-                _logger.LogTrace("Сообщение добавлено в очередь парсера {ParserId}. Размер: {Count}",
+                _logger.LogInformation("Сообщение добавлено в очередь парсера {ParserId}. Размер: {Count}",
                     parserId, queue.Count);
 
                 return true;

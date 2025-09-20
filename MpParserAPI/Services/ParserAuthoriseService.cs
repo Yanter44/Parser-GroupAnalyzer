@@ -38,7 +38,7 @@ namespace MpParserAPI.Services
         {
             try
             {
-                _logger.LogTrace("Начата попытка подгрузки парсеров из бд");
+                _logger.LogInformation("Начата попытка подгрузки парсеров из бд");
                 using var database = await _dbContextFactory.CreateDbContextAsync();
                 var allParserStatesInDb = await database.ParsersStates.ToListAsync();
 

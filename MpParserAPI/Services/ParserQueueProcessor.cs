@@ -24,18 +24,27 @@ namespace MpParserAPI.Services
             _serviceProvider = serviceProvider;
         }
 
-        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("Запуск воркеров для всех парсеров");
 
-            foreach (var parserId in _parserStorage.GetAllParserIds())
+            while (!stoppingToken.IsCancellationRequested)
             {
-                var task = Task.Run(() => WorkerLoop(parserId, stoppingToken), stoppingToken);
-                _workers[parserId] = task;
-            }
+                var parserIds = _parserStorage.GetAllParserIds();
 
-            return Task.WhenAll(_workers.Values);
+                foreach (var parserId in parserIds)
+                {
+                    if (!_workers.ContainsKey(parserId))
+                    {
+                        var task = Task.Run(() => WorkerLoop(parserId, stoppingToken), stoppingToken);
+                        _workers[parserId] = task;
+                        _logger.LogInformation("Создан воркер для нового парсера {ParserId}", parserId);
+                    }
+                }
+                await Task.Delay(2000, stoppingToken);
+            }
         }
+
 
         private async Task WorkerLoop(Guid parserId, CancellationToken stoppingToken)
         {
