@@ -403,10 +403,17 @@ public class ParserService : IParser
 
         database.Entry(existParser).Property(x => x.SpamWords).IsModified = true;
 
+        string redisKey = parserId.ToString();
+
+        var existingValues = await _redisService.GetAllSetMembersAsync(redisKey);
+        _logger.LogInformation("Существующие значения в Redis под ключом {Key}: {Values}", redisKey, string.Join(", ", existingValues));
+
         string hash = HashHelper.ComputeSha256Hash(modelDto.Message);
         _logger.LogInformation("Hash для сообщения: {Hash}", hash);
-        string redisKey = parserId.ToString();
         await _redisService.SetAddAsync(redisKey, hash);
+
+        var allValuesAfter = await _redisService.GetAllSetMembersAsync(redisKey);
+        _logger.LogInformation("Значения в Redis под ключом {Key} после добавления: {Values}", redisKey, string.Join(", ", allValuesAfter));
 
         await database.SaveChangesAsync();
 
