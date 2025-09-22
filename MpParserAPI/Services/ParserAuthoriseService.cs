@@ -34,6 +34,8 @@ namespace MpParserAPI.Services
             _spaceProxyService = spaceProxyService;
     
         }
+
+
         public async Task<bool> LoadAllParsersFromDbAsync()
         {
             try
@@ -89,11 +91,31 @@ namespace MpParserAPI.Services
                             return proxy.CreateConnection(address, port);
                         };
                     }
-                    await parserData.Client.LoginUserIfNeeded();
-                    parserData.AuthState = TelegramAuthState.Authorized;
-                    _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
-                }
+                    //if (parserData.Client.User != null)
+                    //{
+                        await parserData.Client.LoginUserIfNeeded();
+                        parserData.AuthState = TelegramAuthState.Authorized;
+                        _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
+                    //}
+                    //else
+                    //{
+                    //    _logger.LogInformation("Сессия пустая, пробую коннект...");
+                    //    await parserData.Client.ConnectAsync();
 
+                    //    if (parserData.Client.User != null)
+                    //    {
+                    //        parserData.AuthState = TelegramAuthState.Authorized;
+                    //        _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
+                    //    }
+                    //    else
+                    //    {
+                    //        _logger.LogWarning("Сессия оказалась невалидной / не авторизованной, отключаю прокси");
+                    //        parserData.Client.TcpHandler = null;
+                    //        parserData.AuthState = TelegramAuthState.SessionExpired;
+                    //        _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
+                    //    }
+                    //}
+                }
                 return true;
             }
             catch (Exception ex)

@@ -394,50 +394,53 @@ public class ParserService : IParser
 
     public async Task<OperationResult<object>> AddNewSpamMessage(Guid parserId, AddNewSpamMessageDto modelDto)
     {
-        if (!_parserStorage.TryGetParser(parserId, out var parser))
-            return OperationResult<object>.Fail("Не удалось найти parser");
-
-        await using var database = _dbContextFactory.CreateDbContext();
-        var existParser = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
-        if (existParser == null)
-            return OperationResult<object>.Fail("Не удалось найти существующий parser");
-
-        if (existParser.SpamWords?.Contains(modelDto.Message) == true)
-
-            return OperationResult<object>.Fail("Сообщение уже есть в черном списке");
-
-        existParser.SpamWords ??= new List<string>();
-
-        existParser.SpamWords.Add(modelDto.Message);
-
-        database.Entry(existParser).Property(x => x.SpamWords).IsModified = true;
-
-        string redisKey = parserId.ToString();
-
-        var existingValues = await _redisService.GetAllSetMembersAsync(redisKey);
-        _logger.LogInformation("Существующие значения в Redis под ключом {Key}: {Values}", redisKey, string.Join(", ", existingValues));
-
-        string hash = HashHelper.ComputeSha256Hash(modelDto.Message);
-
-        _logger.LogInformation("Hash для сообщения: {Hash}", hash);
-
-        await _redisService.SetAddAsync(redisKey, hash);
-
-        var allValuesAfter = await _redisService.GetAllSetMembersAsync(redisKey);
-        _logger.LogInformation("Значения в Redis под ключом {Key} после добавления: {Values}", redisKey, string.Join(", ", allValuesAfter));
-
-        var logsToRemove = await database.ParserLogsTable
-                        .Where(x => x.ParserId == parserId && x.MessageText == modelDto.Message)
-                        .ToListAsync();
-
-        if (logsToRemove.Any())
+        try
         {
-            database.ParserLogsTable.RemoveRange(logsToRemove);
+            if (!_parserStorage.TryGetParser(parserId, out var parser))
+                return OperationResult<object>.Fail("Не удалось найти parser");
+
+            await using var database = _dbContextFactory.CreateDbContext();
+            var existParser = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
+            if (existParser == null)
+                return OperationResult<object>.Fail("Не удалось найти существующий parser");
+
+            var logsToRemove = await database.ParserLogsTable
+                .Where(x => x.ParserId == parserId && x.MessageText == modelDto.Message)
+                .ToListAsync();
+
+            if (logsToRemove.Any())
+            {
+                database.ParserLogsTable.RemoveRange(logsToRemove);
+                _logger.LogInformation(
+                    "Удалены старые записи для парсера {Parser}. Сообщения: {Messages}",
+                    parserId,
+                    string.Join(", ", logsToRemove.Select(l => l.MessageText))
+                );
+            }
+
+            if (existParser.SpamWords?.Contains(modelDto.Message) == true)
+                return OperationResult<object>.Fail("Сообщение уже есть в черном списке");
+
+            existParser.SpamWords ??= new List<string>();
+            existParser.SpamWords.Add(modelDto.Message);
+            database.Entry(existParser).Property(x => x.SpamWords).IsModified = true;
+
+            string redisKey = parserId.ToString();
+            string hash = HashHelper.ComputeSha256Hash(modelDto.Message);
+            await _redisService.SetAddAsync(redisKey, hash);
+
+            _logger.LogInformation("Сообщение: {Message}, Hash: {Hash} добавлены в Redis под ключом {Key}",
+                modelDto.Message, hash, redisKey);
+
+            await database.SaveChangesAsync();
+
+            return OperationResult<object>.Ok("Сообщение успешно добавлено в черный список");
         }
-
-        await database.SaveChangesAsync();
-
-        return OperationResult<object>.Ok("Сообщение успешно добавлено в черный список");
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при добавлении сообщения в черный список для парсера {ParserId}", parserId);
+            return OperationResult<object>.Fail("Произошла ошибка при добавлении сообщения в черный список");
+        }
     }
 
 

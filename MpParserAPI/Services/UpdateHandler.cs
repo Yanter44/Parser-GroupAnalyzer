@@ -166,7 +166,7 @@ namespace MpParserAPI.Services
                                                 messageLink = $"https://t.me/{groupUsername}/{msg.id}";
                                             }
                                             _logger.LogInformation("Подходим к завершению обработки сообщения {ParserId}", parserId);
-                                            await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"🙍‍Пользователь: {existingTelegramUser.FirstName}\n\n💬Сообщение: {msg.message}\n\n👩‍👩‍👧‍👦Группа: {groupTitle}\n🔖Никнейм: @{user.username}", messageLink);
+                                       //     await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"🙍‍Пользователь: {existingTelegramUser.FirstName}\n\n💬Сообщение: {msg.message}\n\n👩‍👩‍👧‍👦Группа: {groupTitle}\n🔖Никнейм: @{user.username}", messageLink);
                                             _logger.LogInformation("отправили нотифай в бот {ParserId}", parserId);
                                             await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ReceiveMessage", new
                                             {
