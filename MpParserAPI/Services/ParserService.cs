@@ -404,17 +404,15 @@ public class ParserService : IParser
             if (existParser == null)
                 return OperationResult<object>.Fail("Не удалось найти существующий parser");
 
-            var logsToRemove = await database.ParserLogsTable
+            var deletedCount = await database.ParserLogsTable
                 .Where(x => x.ParserId == parserId && x.MessageText == modelDto.Message)
-                .ToListAsync();
+                .ExecuteDeleteAsync();
 
-            if (logsToRemove.Any())
+            if (deletedCount > 0)
             {
-                database.ParserLogsTable.RemoveRange(logsToRemove);
                 _logger.LogInformation(
-                    "Удалены старые записи для парсера {Parser}. Сообщения: {Messages}",
-                    parserId,
-                    string.Join(", ", logsToRemove.Select(l => l.MessageText))
+                    "Удалены {Count} старые записи для парсера {Parser}. Сообщение: {Message}",
+                    deletedCount, parserId, modelDto.Message
                 );
             }
 
@@ -442,6 +440,7 @@ public class ParserService : IParser
             return OperationResult<object>.Fail("Произошла ошибка при добавлении сообщения в черный список");
         }
     }
+
 
 
 }
