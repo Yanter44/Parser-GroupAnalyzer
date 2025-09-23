@@ -399,36 +399,38 @@ public class ParserService : IParser
             if (!_parserStorage.TryGetParser(parserId, out var parser))
                 return OperationResult<object>.Fail("Не удалось найти parser");
 
+            var normalizedMessage = TextNormalizer.NormalizeText(modelDto.Message);
+
             await using var database = _dbContextFactory.CreateDbContext();
             var existParser = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
             if (existParser == null)
                 return OperationResult<object>.Fail("Не удалось найти существующий parser");
 
             var deletedCount = await database.ParserLogsTable
-                .Where(x => x.ParserId == parserId && x.MessageText == modelDto.Message)
+                .Where(x => x.ParserId == parserId && x.MessageText == normalizedMessage)
                 .ExecuteDeleteAsync();
 
             if (deletedCount > 0)
             {
                 _logger.LogInformation(
                     "Удалены {Count} старые записи для парсера {Parser}. Сообщение: {Message}",
-                    deletedCount, parserId, modelDto.Message
+                    deletedCount, parserId, normalizedMessage
                 );
             }
 
-            if (existParser.SpamWords?.Contains(modelDto.Message) == true)
+            if (existParser.SpamWords?.Contains(normalizedMessage) == true)
                 return OperationResult<object>.Fail("Сообщение уже есть в черном списке");
 
             existParser.SpamWords ??= new List<string>();
-            existParser.SpamWords.Add(modelDto.Message);
+            existParser.SpamWords.Add(normalizedMessage);
             database.Entry(existParser).Property(x => x.SpamWords).IsModified = true;
 
             string redisKey = parserId.ToString();
-            string hash = HashHelper.ComputeSha256Hash(modelDto.Message);
+            string hash = HashHelper.ComputeSha256Hash(normalizedMessage);
             await _redisService.SetAddAsync(redisKey, hash);
 
             _logger.LogInformation("Сообщение: {Message}, Hash: {Hash} добавлены в Redis под ключом {Key}",
-                modelDto.Message, hash, redisKey);
+                normalizedMessage, hash, redisKey);
 
             await database.SaveChangesAsync();
 
@@ -440,6 +442,7 @@ public class ParserService : IParser
             return OperationResult<object>.Fail("Произошла ошибка при добавлении сообщения в черный список");
         }
     }
+
 
 
 
