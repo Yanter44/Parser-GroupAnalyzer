@@ -43,6 +43,7 @@ namespace MpParserAPI.Services
             _parserStorage.TryGetParser(parserId, out var parser);
             _logger.LogInformation("Начали обработку сообщения {ParserId}", parserId);
             var parserData = parser;
+
             if (update.Update is UpdatesBase updates)
             {
                 foreach (var upd in updates.UpdateList)
@@ -54,10 +55,14 @@ namespace MpParserAPI.Services
                         {
                             if (msg.from_id is PeerUser peerUser)
                             {
-                                var messageText = msg.message.ToLower().Trim();
-                                var keywords = parser.Keywords.ToList();
+                                var messageText = msg.message ?? string.Empty;
+                                var normalizedMessage = TextNormalizer.NormalizeText(messageText);
 
-                                bool isMatch = CheckForKeywordsOrPhrases(messageText, keywords);
+                                var keywords = parser.Keywords
+                                    .Select(TextNormalizer.NormalizeText)
+                                    .ToList();
+
+                                bool isMatch = CheckForKeywordsOrPhrases(normalizedMessage, keywords);
 
                                 if (isMatch)
                                 {
@@ -66,7 +71,8 @@ namespace MpParserAPI.Services
 
                                     if (dialogs.users.TryGetValue(userId, out var user))
                                     {
-                                        if (!string.IsNullOrEmpty(user.username) && user.username.EndsWith("bot", StringComparison.OrdinalIgnoreCase))
+                                        if (!string.IsNullOrEmpty(user.username) &&
+                                            user.username.EndsWith("bot", StringComparison.OrdinalIgnoreCase))
                                             continue;
 
                                         string groupTitle = "Неизвестная группа";
@@ -86,7 +92,6 @@ namespace MpParserAPI.Services
                                                     break;
                                             }
 
-
                                             var userPhotoId = user.photo?.photo_id;
                                             await using var database = _dbContextFactory.CreateDbContext();
                                             var existingTelegramUser = await database.TelegramUsers
@@ -99,7 +104,8 @@ namespace MpParserAPI.Services
                                                 if (user.photo != null)
                                                 {
                                                     await using var userProfileImageBytes = new MemoryStream();
-                                                    await parserData.Client.DownloadProfilePhotoAsync(user, userProfileImageBytes, true, true);
+                                                    await parserData.Client.DownloadProfilePhotoAsync(
+                                                        user, userProfileImageBytes, true, true);
                                                     userProfileImageBytes.Position = 0;
 
                                                     if (userProfileImageBytes.Length > 0)
@@ -113,7 +119,10 @@ namespace MpParserAPI.Services
                                                     imageUrl = "https://res.cloudinary.com/ddg6n36uq/image/upload/v1747355623/c31bd024-f78b-459b-b96a-438eeb186eeb.png";
                                                 }
                                             }
-                                            else { imageUrl = existingTelegramUser.ProfileImageUrl; }
+                                            else
+                                            {
+                                                imageUrl = existingTelegramUser.ProfileImageUrl;
+                                            }
 
                                             if (existingTelegramUser == null)
                                             {
@@ -145,16 +154,17 @@ namespace MpParserAPI.Services
                                                 database.TelegramUsers.Update(existingTelegramUser);
                                             }
                                             await database.SaveChangesAsync();
-                                            
-                                            var msgConvertedToHash = HashHelper.ComputeSha256Hash(msg.message);
-                                            var isexistSpamMessageInRedis = await _redisService.SetContainsAsync(parserId.ToString(), msgConvertedToHash);
+
+                                            var msgConvertedToHash = HashHelper.ComputeSha256Hash(normalizedMessage);
+                                            var isexistSpamMessageInRedis =
+                                                await _redisService.SetContainsAsync(parserId.ToString(), msgConvertedToHash);
                                             if (isexistSpamMessageInRedis) { return; }
 
                                             var parserlog = new ParserLogs
                                             {
                                                 ParserId = parserId,
                                                 TelegramUserId = existingTelegramUser.TelegramUserId,
-                                                MessageText = msg.message,
+                                                MessageText = normalizedMessage 
                                             };
 
                                             database.ParserLogsTable.Add(parserlog);
@@ -165,28 +175,27 @@ namespace MpParserAPI.Services
                                             {
                                                 messageLink = $"https://t.me/{groupUsername}/{msg.id}";
                                             }
+
                                             _logger.LogInformation("Подходим к завершению обработки сообщения {ParserId}", parserId);
-                                       //     await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"🙍‍Пользователь: {existingTelegramUser.FirstName}\n\n💬Сообщение: {msg.message}\n\n👩‍👩‍👧‍👦Группа: {groupTitle}\n🔖Никнейм: @{user.username}", messageLink);
-                                            _logger.LogInformation("отправили нотифай в бот {ParserId}", parserId);
+
                                             await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ReceiveMessage", new
                                             {
                                                 ProfileImageUrl = imageUrl,
                                                 Name = user.first_name,
                                                 Username = user.username,
-                                                MessageText = msg.message,
+                                                MessageText = messageText,
                                                 MessageTime = parserlog.CreatedAt.ToLocalTime().ToString("HH:mm")
-
                                             });
-                              
+
                                             _logger.LogInformation("""
-                                                 Для парсера {ParserId} пришло сообщение:
-                                                 Пользователь: {UserId} ({FirstName} {LastName})
-                                                 Никнейм: @{Username}
-                                                 Телефон: {Phone}
-                                                 Группа: {GroupTitle}
-                                                 Сообщение: {Message}
-                                                 """, parserId, user.id, user.first_name, user.last_name,
-                                             user.username, user.phone, groupTitle, msg.message);
+                                        Для парсера {ParserId} пришло сообщение:
+                                        Пользователь: {UserId} ({FirstName} {LastName})
+                                        Никнейм: @{Username}
+                                        Телефон: {Phone}
+                                        Группа: {GroupTitle}
+                                        Сообщение: {Message}
+                                        """, parserId, user.id, user.first_name, user.last_name,
+                                                user.username, user.phone, groupTitle, messageText);
                                         }
                                     }
                                 }
@@ -195,48 +204,33 @@ namespace MpParserAPI.Services
                     }
                 }
             }
-
         }
-      private bool CheckForKeywordsOrPhrases(string messageText, List<string> keywords)
+
+        private bool CheckForKeywordsOrPhrases(string messageText, List<string> keywords)
         {
-            if (string.IsNullOrEmpty(messageText) || keywords == null || !keywords.Any())
+            if (string.IsNullOrEmpty(messageText) || keywords == null || keywords.Count == 0)
                 return false;
 
-            var wordsInMessage = Regex.Split(messageText, @"\W+")
-                .Where(word => !string.IsNullOrEmpty(word))
-                .ToList();
-
+            var wordsInMessage = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             foreach (var keyword in keywords)
             {
-                var trimmedKeyword = keyword.Trim().ToLower();
-
-                if (string.IsNullOrEmpty(trimmedKeyword))
+                if (string.IsNullOrWhiteSpace(keyword))
                     continue;
 
-                if (trimmedKeyword.Contains(' '))
+                if (keyword.Contains(' '))
                 {
-                    if (messageText.Contains(trimmedKeyword))
-                    {
+                    if (messageText.Contains(keyword))
                         return true;
-                    }
-                    var normalizedKeyword = Regex.Replace(trimmedKeyword, @"\s+", " ");
-                    var normalizedMessage = Regex.Replace(messageText, @"\s+", " ");
-
-                    if (normalizedMessage.Contains(normalizedKeyword))
-                    {
-                        return true;
-                    }
                 }
                 else
                 {
-                    if (wordsInMessage.Contains(trimmedKeyword))
-                    {
+                    if (wordsInMessage.Contains(keyword))
                         return true;
-                    }
                 }
             }
 
             return false;
         }
+
     }
 }
