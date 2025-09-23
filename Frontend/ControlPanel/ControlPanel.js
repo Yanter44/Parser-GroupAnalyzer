@@ -157,11 +157,6 @@ async function InitializePage() {
 
                 if (remainingParsingTimeHoursMinutes && remainingParsingTimeHoursMinutes !== "00:00:00") {
                     let timeElem = document.querySelector(".RemainingTimeToStopParser");
-                    if (!timeElem) {
-                        timeElem = document.createElement("div");
-                        timeElem.className = "RemainingTimeToStopParser";
-                    }
-                    
                     const btn = document.querySelector(".StartParserButton, .StopParserButton");
                     if (btn && btn.parentNode) {
                         btn.parentNode.insertBefore(timeElem, btn.nextSibling);
@@ -171,7 +166,6 @@ async function InitializePage() {
                     const timeElem = document.querySelector(".RemainingParsingTime");
                     if (timeElem) timeElem.remove();
                 }
-
                 startTickTimer(remainingParsingTimeHoursMinutes);
             } else {
                 setInputsEnabled(true);
@@ -271,7 +265,7 @@ function closeModal() {
 //Теги
 function updateTagCounts(tagsLenght) {
   const tagslabel = document.getElementById("tagCount");
-  tagslabel.textContent = `Выбранное кол-во тегов: ${tagsLenght}`
+  tagslabel.textContent = `Кол-во тегов: ${tagsLenght}`
 }
 
 async function saveTags() {
@@ -289,6 +283,8 @@ async function saveTags() {
                     .split(/\r?\n/) 
                     .map(line => line.trim())
                     .filter(line => line.length > 0);
+
+             
 
                 combinedTags.push(...lines);
             } catch (err) {
@@ -367,8 +363,9 @@ function startTickTimer(timeString) {
         }
     }
     
-    span.style.display = 'block'
 
+    span.style.display = 'block'
+    span.style.alignSelf = 'center';
     span.style.marginLeft = "10px";
     span.style.marginBottom = "10px";
 
@@ -480,8 +477,11 @@ function EnableOverlayOverlay(overlayenabled) {
 
 function closeSidePanel() {
     const sidePanel = document.getElementById('sidePanel');
-
+    const tagifyModal = document.getElementById('tagifyModal');
     sidePanel.classList.remove('active');
+    
+    tagifyModal.classList.remove('active');
+    tagifyModal.classList.add('hidden');
     EnableOverlayOverlay(false);
     setTimeout(() => {
         sidePanel.classList.add('hidden');
@@ -527,6 +527,7 @@ async function startParsing() {
         startTickTimer(remainTime);
         startSignalR();
         updateParserButton('stop');
+
     } catch (error) {
         console.error('Ошибка при запуске парсинга:', error);
         updateParserButton('start');
@@ -573,32 +574,35 @@ function startSignalR() {
     connection.on("ParsingIsStoped", () => {
         setInputsEnabled(true);
         updateParserButton('start');
-        console.log("проверка прошла");
+        console.log("попытка прошла");
     });
     connection.on("ParserChangedProxy", (remainingTime) => {
         updateParserButton('start'); 
         startTickTimer(remainingTime); 
         setInputsEnabled(false); 
     });
-    connection.on("ParsingIsStoped", (totalparsingtime) => {
-      updateTotalParsingTime(totalparsingtime);
-        console.log("проверка прошла2");
+    connection.on("ParsingIsStoped", (data) => {
+       console.log("Пришло от сервера:", data);
+       updateTotalParsingTime(data.totalParsingTime); 
     });
     connection.start()
         .then(() => console.log("SignalR подключен"))
         .catch(err => console.error("Ошибка подключения SignalR:", err));
 }
 
-function updateTotalParsingTime(totalparsingtime){
-      const totalparsingTimeElement = document.getElementsByClassName("TotalParsingTimeValueText")[0];
-            if (totalparsingTimeElement) {
-                if (totalParsingTime === "") {
-                    totalparsingTimeElement.textContent = "0м";
-                } else {
-                    totalparsingTimeElement.textContent = totalparsingtime;
-                }
-            }
-    console.log("попытка прошла");
+function updateTotalParsingTime(totalparsingtime) {
+    const totalparsingTimeElement = document.getElementsByClassName("TotalParsingTimeValueText")[0];
+    if (totalparsingTimeElement) {
+        if (totalparsingtime === "") {
+            totalparsingTimeElement.textContent = "0м";
+        }
+        else {
+            totalparsingTimeElement.textContent = totalparsingtime;
+        }
+    } 
+    else{
+     console.log("элемент не нашло :((("); 
+    }
 }
 
 function addMessageToList(data) {

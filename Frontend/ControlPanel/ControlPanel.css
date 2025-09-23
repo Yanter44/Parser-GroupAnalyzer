@@ -97,13 +97,19 @@ body {
   background-color: #403a4c;
   transform: translateY(1px);
 }
+.tagsImageAndLabel{
+
+}
+.tagImage{
+  width: 16px;
+}
 
 #tagifyModal {
   position: fixed;
   top: 35%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: var(--bg-secondary);
+  background: #100E28;
   padding: 30px;
   border-radius: 10px;
   z-index: 1101;
@@ -112,7 +118,9 @@ body {
   animation: fadeIn 0.3s ease;
   width: 40%;
 }
-
+#tagifyModal.hidden {
+  display: none;
+}
 #tagifyModal.active {
   display: block;
 }
@@ -424,6 +432,7 @@ body {
 
 .StartParserButton {
   background-color: #40a944;
+  width: 100%;
 }
 
 .StopParserButton {
@@ -433,6 +442,7 @@ body {
 .WaitParserButton {
   background-color: var(--warning);
   cursor: no-drop;
+  width: 100%;
 }
 
 .StartParserIcon {
@@ -756,9 +766,19 @@ body {
 
 
 @media (max-width: 768px) {
+  #labelForKeywords{
+    display: none !important;
+  }
+  #InputKeywordsFile{
+    display: none !important;
+  }
+  .tagify{
+    flex-direction: row !important;
+    min-height: 200px !important;
+  }
   #tagifyModal {
     width: 90%;
-    top: 50%;
+    top: 40%;
     padding: 20px;
   }
 
@@ -972,7 +992,11 @@ body {
     align-items: center;
     gap: 15px;
   }
-  
+  .tagify{
+    flex-direction: row !important;
+    min-height: 100px !important;
+  }
+
   .RemainingTimeToStopParser {
     display: none;
     margin: 0;
