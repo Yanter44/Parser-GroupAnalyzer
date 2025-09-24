@@ -67,7 +67,10 @@
   <div class="modalContent" onclick="event.stopPropagation();">
     <button class="closeButton" onclick="closeModal()">&times;</button>
     <label id="tagifyLabel"></label>
-    <label id="tagCount"></label>
+    <div class="tagsImageAndLabel">
+     <img class="tagImage" src="Assets/Tags.png"/>
+     <label id="tagCount">Кол-во тегов: 0</label>
+   </div>
     <label id="labelForKeywords">Укажите файл с ключевыми словами, или введите их вручную</label>
     <input type="file" id="InputKeywordsFile" accept=".txt"/>
     <input id="tagifyInput" placeholder="" />
