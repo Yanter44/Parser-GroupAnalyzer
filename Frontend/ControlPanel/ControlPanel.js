@@ -157,19 +157,28 @@ async function InitializePage() {
 
                 if (remainingParsingTimeHoursMinutes && remainingParsingTimeHoursMinutes !== "00:00:00") {
                     let timeElem = document.querySelector(".RemainingTimeToStopParser");
-                    const btn = document.querySelector(".StartParserButton, .StopParserButton");
-                    if (btn && btn.parentNode) {
-                        btn.parentNode.insertBefore(timeElem, btn.nextSibling);
+
+                    if (!timeElem) {
+                        timeElem = document.createElement("div");
+                        timeElem.className = "RemainingTimeToStopParser";
+
+                        const btn = document.querySelector(".StartParserButton, .StopParserButton");
+                        if (btn && btn.parentNode) {
+                            btn.parentNode.insertBefore(timeElem, btn.nextSibling);
+                        }
                     }
-                    timeElem.textContent = `${remainingParsingTimeHoursMinutes}`;
+                    timeElem.textContent = remainingParsingTimeHoursMinutes;
+
                 } else {
-                    const timeElem = document.querySelector(".RemainingParsingTime");
+                    const timeElem = document.querySelector(".RemainingTimeToStopParser");
                     if (timeElem) timeElem.remove();
                 }
+
                 startTickTimer(remainingParsingTimeHoursMinutes);
+
             } else {
                 setInputsEnabled(true);
-                const timeElem = document.querySelector(".RemainingParsingTime");
+                const timeElem = document.querySelector(".RemainingTimeToStopParser");
                 if (timeElem) timeElem.remove();
             }
 
