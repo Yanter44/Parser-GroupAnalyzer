@@ -277,7 +277,7 @@ namespace MpBossParserNotification.Services
                     chatId: chatId,
                     text: $"🔔 *Новое уведомление:*\n\n{message}",
                     replyMarkup: inlineKeyboard,
-                    parseMode: ParseMode.Markdown
+                    parseMode: ParseMode.Html
                 );
             }
             catch (Exception ex)
