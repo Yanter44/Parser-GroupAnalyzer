@@ -268,16 +268,25 @@ namespace MpBossParserNotification.Services
 
             try
             {
-                var inlineKeyboard = new InlineKeyboardMarkup(new[]
+                InlineKeyboardMarkup inlineKeyboard = null;
+
+                if (!string.IsNullOrEmpty(messageLink))
                 {
-                    InlineKeyboardButton.WithUrl("📩 Перейти к сообщению", messageLink)
-                });
+                    inlineKeyboard = new InlineKeyboardMarkup(new[]
+                    {
+                      InlineKeyboardButton.WithUrl("📩 Перейти к сообщению", messageLink)
+                    });
+                }
+                else
+                {
+                    message += "\n\n⚠️ Группа приватная — ссылка на сообщение недоступна.";
+                }
 
                 await _botClient.SendMessage(
                     chatId: chatId,
                     text: $"🔔 *Новое уведомление:*\n\n{message}",
                     replyMarkup: inlineKeyboard,
-                    parseMode: ParseMode.Html
+                    parseMode: ParseMode.Markdown
                 );
             }
             catch (Exception ex)
@@ -285,5 +294,6 @@ namespace MpBossParserNotification.Services
                 Console.WriteLine($"[ERROR] Ошибка отправки уведомления: {ex.Message}");
             }
         }
+
     }
 }
