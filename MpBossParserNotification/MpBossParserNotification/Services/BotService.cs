@@ -274,38 +274,25 @@ namespace MpBossParserNotification.Services
                 {
                     inlineKeyboard = new InlineKeyboardMarkup(new[]
                     {
-                InlineKeyboardButton.WithUrl("📩 Перейти к сообщению", messageLink)
-            });
+                      InlineKeyboardButton.WithUrl("📩 Перейти к сообщению", messageLink)
+                    });
                 }
                 else
                 {
                     message += "\n\n⚠️ Группа приватная — ссылка на сообщение недоступна.";
                 }
 
-                var finalText = $"🔔 *Новое уведомление:*\n\n{message}";
-
-                Console.WriteLine("=======================================");
-                Console.WriteLine($"[DEBUG] Sending to chatId={chatId}");
-                Console.WriteLine("[DEBUG] Text:");
-                Console.WriteLine(finalText);
-                Console.WriteLine("[DEBUG] MessageLink: " + (messageLink ?? "NULL"));
-                Console.WriteLine("=======================================");
-
                 await _botClient.SendMessage(
                     chatId: chatId,
-                    text: finalText,
-                    replyMarkup: inlineKeyboard,
-                    parseMode: ParseMode.Markdown
+                    text: $"🔔 *Новое уведомление:*\n\n{message}",
+                    replyMarkup: inlineKeyboard
                 );
             }
             catch (Exception ex)
             {
-                Console.WriteLine("=======================================");
                 Console.WriteLine($"[ERROR] Ошибка отправки уведомления: {ex.Message}");
-                Console.WriteLine("=======================================");
             }
         }
-
 
     }
 }
