@@ -3,65 +3,34 @@ const tg = window.Telegram.WebApp;
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
-  function initTelegramWebApp() {
-        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
-            const tg = Telegram.WebApp;
-            
-            console.log('WebApp version:', tg.version);          
-            try {
-                window.parent.postMessage(JSON.stringify({
-                    eventType: 'web_app_setup_back_button',
-                    params: { is_visible: true }
-                }), '*');
-                
-                console.log('Back button setup command sent');
-                
-                window.addEventListener('message', function(event) {
-                    try {
-                        const data = JSON.parse(event.data);
-                        if (data.eventType === 'back_button_pressed') {
-                            console.log('Back button pressed - closing app');
-                            tg.close();
-                        }
-                    } catch (e) {
-                    }
-                });
-                
-            } catch (error) {
-                console.error('Error setting up back button:', error);
-            }
-            try {
-                window.parent.postMessage(JSON.stringify({
-                    eventType: 'web_app_setup_closing_behavior',
-                    params: { need_confirmation: false }
-                }), '*');
-            } catch (error) {
-                console.error('Error setting closing behavior:', error);
-            }       
-            tg.MainButton.hide();
-            if (tg.SecondaryButton) {
-                tg.SecondaryButton.hide();
-            }
+function initTelegramWebApp() {
+    if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
 
-            if (tg.BackButton) {
-                tg.BackButton.show();
-                tg.BackButton.onClick(function () {
-                    if (window.history.length > 1) {
-                        window.history.back();
-                    } else {
-                        tg.close();
-                    }
-                });
-            }
+        console.log('WebApp version:', tg.version);
+        tg.ready();
 
-            
-        } else {
-            setTimeout(initTelegramWebApp, 100);
+        if (tg.BackButton) {
+            tg.BackButton.show();
+            tg.BackButton.onClick(function () {
+                if (window.history.length > 1) {
+                    window.history.back();
+                } else {
+                    tg.close();
+                }
+            });
         }
-    }
 
-    
-    initTelegramWebApp();
+        tg.MainButton.hide();
+        if (tg.SecondaryButton) tg.SecondaryButton.hide();
+
+    } else {
+        setTimeout(initTelegramWebApp, 100);
+    }
+}
+
+initTelegramWebApp();
+
 	
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.LoginInput') && !e.target.closest('.LoginButton')) {

@@ -6,23 +6,25 @@ console.log(config.API_BASE);
 console.log(config.DefaultStartFileLocation); 
 
 document.addEventListener("DOMContentLoaded", () => {
-    function initTelegramWebApp() {
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
+   function initTelegramWebApp() {
+    if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
 
-            console.log('WebApp version:', tg.version);
-            tg.ready();
+        console.log('WebApp version:', tg.version);
+        tg.ready();
 
-            if (tg.BackButton) {          
-                tg.BackButton.hide();            
-            }
-
-        } else {
-            setTimeout(initTelegramWebApp, 100);
+        if (tg.BackButton) {
+            tg.BackButton.hide(); 
         }
-    }
 
-    initTelegramWebApp();
+        tg.MainButton.hide();
+        if (tg.SecondaryButton) tg.SecondaryButton.hide();
+
+    } else {
+        setTimeout(initTelegramWebApp, 100);
+    }
+}
+initTelegramWebApp();
 });
 
 primarybutton.addEventListener('click', () => {
