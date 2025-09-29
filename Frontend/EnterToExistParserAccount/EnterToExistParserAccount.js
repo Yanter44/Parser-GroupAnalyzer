@@ -3,33 +3,34 @@ const tg = window.Telegram.WebApp;
 console.log(config.API_BASE); 
 console.log(config.DefaultStartFileLocation);
 document.addEventListener("DOMContentLoaded", () => {
-function initTelegramWebApp() {
-    if (window.Telegram && window.Telegram.WebApp) {
-        const tg = window.Telegram.WebApp;
+ function initTelegramWebApp() {
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            
+            tg.ready();
 
-        console.log('WebApp version:', tg.version);
-        tg.ready();
+            tg.MainButton.hide();
+            if (tg.SecondaryButton) {
+                tg.SecondaryButton.hide();
+            }
 
-        if (tg.BackButton) {
-            tg.BackButton.show();
-            tg.BackButton.onClick(function () {
-                if (window.history.length > 1) {
-                    window.history.back();
-                } else {
-                    tg.close();
-                }
-            });
+            if (tg.BackButton) {
+                tg.BackButton.show();
+                tg.BackButton.onClick(function() {
+                    if (window.history.length > 1) {
+                        window.history.back();
+                    } else {
+                        tg.close();
+                    }
+                });
+            }
+            
+        } else {
+            setTimeout(initTelegramWebApp, 100);
         }
-
-        tg.MainButton.hide();
-        if (tg.SecondaryButton) tg.SecondaryButton.hide();
-
-    } else {
-        setTimeout(initTelegramWebApp, 100);
     }
-}
 
-initTelegramWebApp();
+    initTelegramWebApp();
 
 	
     document.addEventListener('click', (e) => {

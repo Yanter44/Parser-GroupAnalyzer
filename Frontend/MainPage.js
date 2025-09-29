@@ -14,11 +14,8 @@ document.addEventListener("DOMContentLoaded", () => {
         tg.ready();
 
         if (tg.BackButton) {
-            tg.BackButton.hide(); 
+            tg.BackButton.hide();          
         }
-
-        tg.MainButton.hide();
-        if (tg.SecondaryButton) tg.SecondaryButton.hide();
 
     } else {
         setTimeout(initTelegramWebApp, 100);
