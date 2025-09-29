@@ -12,6 +12,33 @@ const ErrorCodes = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+ function initTelegramWebApp() {
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            
+            tg.ready();
+
+            if (tg.BackButton) {
+                tg.BackButton.show();
+                tg.BackButton.onClick(() => {
+                    window.history.back(); 
+                });
+                console.log('✅ EnterToExistParserAccountPage: BackButton shown');
+}
+
+        } else {
+            setTimeout(initTelegramWebApp, 100);
+        }
+    }
+
+    initTelegramWebApp();
+
+
+
+
+
+
+
   const authForm = document.querySelector(".AuthForm");
   const confirmCodeForm = document.querySelector(".ConfirmCodeForm");
   const confirmTwoFactoPasswordForm = document.querySelector(".ConfirmTwoFactoPasswordForm");

@@ -6,22 +6,27 @@ console.log(config.API_BASE);
 console.log(config.DefaultStartFileLocation); 
 
 document.addEventListener("DOMContentLoaded", () => {
-   function initTelegramWebApp() {
-    if (window.Telegram && window.Telegram.WebApp) {
-        const tg = window.Telegram.WebApp;
+  function initTelegramWebApp() {
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
 
-        console.log('WebApp version:', tg.version);
-        tg.ready(); 
-  
-        if (tg.BackButton) {
-            tg.BackButton.hide();          
+            // Полностью скрываем BackButton (стрелку)
+            if (tg.BackButton) {
+                tg.BackButton.hide();
+                console.log('✅ BackButton hidden, only default Close is visible');
+            }
+
+            // Можно управлять MainButton или SecondaryButton, если нужно
+            tg.MainButton.hide();
+            if (tg.SecondaryButton) tg.SecondaryButton.hide();
+
+        } else {
+            setTimeout(initTelegramWebApp, 100);
         }
-
-    } else {
-        setTimeout(initTelegramWebApp, 100);
     }
-}
-initTelegramWebApp();
+
+    initTelegramWebApp();
 });
 
 primarybutton.addEventListener('click', () => {
