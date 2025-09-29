@@ -11,8 +11,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const tg = window.Telegram.WebApp;
 
         console.log('WebApp version:', tg.version);
-        tg.ready();
-
+        tg.ready(); 
+  
         if (tg.BackButton) {
             tg.BackButton.hide();          
         }

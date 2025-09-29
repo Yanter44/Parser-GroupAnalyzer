@@ -9,22 +9,14 @@ document.addEventListener("DOMContentLoaded", () => {
             
             tg.ready();
 
-            tg.MainButton.hide();
-            if (tg.SecondaryButton) {
-                tg.SecondaryButton.hide();
-            }
-
             if (tg.BackButton) {
                 tg.BackButton.show();
-                tg.BackButton.onClick(function() {
-                    if (window.history.length > 1) {
-                        window.history.back();
-                    } else {
-                        tg.close();
-                    }
+                tg.BackButton.onClick(() => {
+                    window.history.back(); 
                 });
-            }
-            
+                console.log('✅ EnterToExistParserAccountPage: BackButton shown');
+}
+
         } else {
             setTimeout(initTelegramWebApp, 100);
         }
