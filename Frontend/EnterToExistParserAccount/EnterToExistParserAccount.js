@@ -42,7 +42,18 @@ document.addEventListener("DOMContentLoaded", () => {
             if (tg.SecondaryButton) {
                 tg.SecondaryButton.hide();
             }
-            tg.ready();
+
+            if (tg.BackButton) {
+                tg.BackButton.show();
+                tg.BackButton.onClick(function () {
+                    if (window.history.length > 1) {
+                        window.history.back();
+                    } else {
+                        tg.close();
+                    }
+                });
+            }
+
             
         } else {
             setTimeout(initTelegramWebApp, 100);
