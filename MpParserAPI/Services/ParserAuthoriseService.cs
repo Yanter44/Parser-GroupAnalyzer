@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Net.Sockets;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using MpParserAPI.Common;
 using MpParserAPI.DbContext;
 using MpParserAPI.Enums;
@@ -18,13 +20,14 @@ namespace MpParserAPI.Services
         private readonly IParserDataStorage _parserStorage;
         private readonly ILogger<ParserAuthoriseService> _logger;
         private readonly ISpaceProxy _spaceProxyService;
+        private readonly IParser _parserService;
         public ParserAuthoriseService(ICloudinaryService cloudinaryService,
                              IGenerator generator,
                              IDbContextFactory<ParserDbContext> dbContextFactory,
                              IParserDataStorage parserStorage,
                              ILogger<ParserAuthoriseService> logger,
-                             ISpaceProxy spaceProxyService
-                            )
+                             ISpaceProxy spaceProxyService,
+                             IParser parserService)
         {
             _cloudinaryService = cloudinaryService;
             _generatorService = generator;
@@ -32,98 +35,123 @@ namespace MpParserAPI.Services
             _parserStorage = parserStorage;
             _logger = logger;
             _spaceProxyService = spaceProxyService;
-    
+            _parserService = parserService;
         }
 
 
-        public async Task<bool> LoadAllParsersFromDbAsync()
+        //public async Task<bool> LoadAllParsersFromDbAsync()
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation("Начата попытка подгрузки парсеров из БД");
+        //        using var database = await _dbContextFactory.CreateDbContextAsync();
+        //        var allParserStatesInDb = await database.ParsersStates.ToListAsync();
+
+        //        foreach (var parserState in allParserStatesInDb)
+        //        {
+        //            var parserData = new ParserData(parserState.ParserId, parserState.Password, parserState.Phone)
+        //            {
+        //                Keywords = parserState.Keywords,
+        //                TargetGroups = parserState.TargetGroups
+        //                                    .Select(g => new InputPeerChannel(g.ChatId, g.AccessHash))
+        //                                    .Cast<InputPeer>()
+        //                                    .ToList(),
+        //                TargetGroupTitles = parserState.TargetGroups.Select(x => x.Title).ToList(),
+        //                IsParsingStarted = false,
+        //                TotalParsingTime = parserState.TotalParsingTime,
+        //                SubscriptionType = parserState.SubscriptionType,
+        //                SubscriptionEndDate = parserState.SubscriptionEndDate,
+        //            };
+
+        //            _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
+
+        //            parserData.Client = new Client(key =>
+        //            {
+        //                if (key == "session_pathname")
+        //                    return GetSessionPath(parserState.Phone, isTemp: false);
+
+        //                return key switch
+        //                {
+        //                    "api_id" => "22262339",
+        //                    "api_hash" => "fc15371db5ea0ba274b93faf572aec6b",
+        //                    "phone_number" => parserData.Phone,
+
+        //                    "verification_code" => null,
+        //                    "password" => null,
+        //                    _ => null
+        //                };
+        //            });
+
+        //            var proxy = await _spaceProxyService.GetAndSetAvailableProxy(parserData.Id);
+        //            if (proxy != null)
+        //            {
+        //                parserData.Client.TcpHandler = async (address, port) =>
+        //                {
+        //                    var p = new Leaf.xNet.Socks5ProxyClient(proxy.IpAddress, proxy.Socks5Port)
+        //                    {
+        //                        Username = proxy.Username,
+        //                        Password = proxy.Password
+        //                    };
+        //                    return p.CreateConnection(address, port);
+        //                };
+        //            }
+        //            try
+        //            {
+        //                var me = await parserData.Client.LoginUserIfNeeded();
+        //                parserData.AuthState = TelegramAuthState.Authorized;
+        //                _logger.LogInformation("Парсер {ParserId} авторизован", parserState.ParserId);
+        //            }
+        //            catch (RpcException ex) when (
+        //                   ex.Message.Contains("SESSION_PASSWORD_NEEDED") ||
+        //                   ex.Message.Contains("PHONE_CODE_NEEDED"))
+        //            {
+        //                parserData.AuthState = TelegramAuthState.SessionExpired;
+        //                _logger.LogWarning("Сессия {ParserId} устарела, требуется ввод кода", parserState.ParserId);
+        //            }
+        //            catch (RpcException ex) when (
+        //                   ex.Message.Contains("AUTH_KEY_UNREGISTERED") ||
+        //                   ex.Message.Contains("AUTH_KEY_INVALID") ||
+        //                   ex.Message.Contains("SESSION_REVOKED") ||
+        //                   ex.Message.Contains("SESSION_EXPIRED"))
+        //            {
+        //                parserData.AuthState = TelegramAuthState.Unauthorized;
+        //                _logger.LogError("Сессия {ParserId} недействительна (auth_key), нужна полная реавторизация", parserState.ParserId);
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                _logger.LogError(ex, "Ошибка при авторизации парсера {ParserId}", parserState.ParserId);
+        //            }
+
+        //        }
+        //        return true;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError("Ошибка при загрузке парсеров из БД: {Exception}", ex.Message);
+        //        return false;
+        //    }
+        //}
+
+        public async Task<OperationResult<bool>> VerifyTelegramCodeForParser(Guid parserId, int telegramCode)
         {
-            try
+            if (!_parserStorage.TryGetParser(parserId, out var parser) || parser == null)
+                return OperationResult<bool>.Fail(false, "Не удалось найти парсер");
+            
+            var result = await parser.Client.Login(telegramCode.ToString());
+            switch (result)
             {
-                _logger.LogInformation("Начата попытка подгрузки парсеров из бд");
-                using var database = await _dbContextFactory.CreateDbContextAsync();
-                var allParserStatesInDb = await database.ParsersStates.ToListAsync();
+                case "password":
+                    return OperationResult<bool>.Fail(false, ErrorCodes.NeedTwoFactorPassword);
 
-                foreach (var parserState in allParserStatesInDb)
-                {
-                    var parserData = new ParserData(parserState.ParserId, parserState.Password, parserState.Phone)
-                    {
-                        Keywords = parserState.Keywords,
-                        TargetGroups = parserState.TargetGroups
-                                            .Select(g => new InputPeerChannel(g.ChatId, g.AccessHash))
-                                            .Cast<InputPeer>()
-                                            .ToList(),
-                        TargetGroupTitles = parserState.TargetGroups.Select(x => x.Title).ToList(),
-                        IsParsingStarted = false,
-                        TotalParsingTime = parserState.TotalParsingTime,
-                        SubscriptionType = parserState.SubscriptionType,
-                        SubscriptionEndDate = parserState.SubscriptionEndDate,
-                        
-                    };
+                case null:
+                    parser.AuthState = TelegramAuthState.Authorized;
+                    return OperationResult<bool>.Ok(true, "Операция прошла успешно");
 
-                    _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
-
-                    parserData.Client = new Client(what =>
-                    {
-                        if (what == "session_pathname")
-                            return GetSessionPath(parserState.Phone, isTemp: false);
-
-                        return what switch
-                        {
-                            "api_id" => "22262339",
-                            "api_hash" => "fc15371db5ea0ba274b93faf572aec6b",
-                            "phone_number" => parserState.Phone,
-                            _ => null
-                        };
-                    });
-
-                    var gettedAvailableProxy = await _spaceProxyService.GetAndSetAvailableProxy(parserData.Id);
-                    if(gettedAvailableProxy != null)
-                    {
-                        parserData.Client.TcpHandler = async (address, port) =>
-                        {
-
-                            var proxy = new Leaf.xNet.Socks5ProxyClient(gettedAvailableProxy.IpAddress, gettedAvailableProxy.Socks5Port)
-                            {
-                                Username = gettedAvailableProxy.Username,
-                                Password = gettedAvailableProxy.Password
-                            };
-                            return proxy.CreateConnection(address, port);
-                        };
-                    }
-                    //if (parserData.Client.User != null)
-                    //{
-                        await parserData.Client.LoginUserIfNeeded();
-                        parserData.AuthState = TelegramAuthState.Authorized;
-                        _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
-                    //}
-                    //else
-                    //{
-                    //    _logger.LogInformation("Сессия пустая, пробую коннект...");
-                    //    await parserData.Client.ConnectAsync();
-
-                    //    if (parserData.Client.User != null)
-                    //    {
-                    //        parserData.AuthState = TelegramAuthState.Authorized;
-                    //        _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
-                    //    }
-                    //    else
-                    //    {
-                    //        _logger.LogWarning("Сессия оказалась невалидной / не авторизованной, отключаю прокси");
-                    //        parserData.Client.TcpHandler = null;
-                    //        parserData.AuthState = TelegramAuthState.SessionExpired;
-                    //        _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
-                    //    }
-                    //}
-                }
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Ошибка при загрузке парсеров из БД: {Exception}", ex.Message);
-                return false;
+                default:
+                    return OperationResult<bool>.Fail(false, $"Неизвестный результат авторизации: {result}");
             }
         }
+
 
         public async Task<OperationResult<Guid>> RequestLoginAsync(string phone)
         {
@@ -361,7 +389,6 @@ namespace MpParserAPI.Services
                 TargetGroups = new List<GroupReference>(),
                 SubscriptionType = SubscriptionType.Test
 
-
             };
             using var database = await _dbContextFactory.CreateDbContextAsync();
             database.ParsersStates.Add(newparserStateModel);
@@ -414,17 +441,26 @@ namespace MpParserAPI.Services
             return isphonealreadyused;
         }
 
-        public  Task<OperationResult<ParserAuthResultDto>> EnterToSessionByKeyAndPassword(Guid parserId, string sessionPassword)
+        public async Task<OperationResult<ParserAuthResultDto>> EnterToSessionByKeyAndPassword(Guid parserId, string sessionPassword)
         {
-            if (_parserStorage.TryGetParser(parserId, out var parser) && parser.Password == sessionPassword)
+            if (!_parserStorage.TryGetParser(parserId, out var parser))
             {
-                return Task.FromResult(OperationResult<ParserAuthResultDto>.Ok(new ParserAuthResultDto
+                parser = await _parserService.TryGetParserFromDb(parserId);
+
+                if (parser == null)
                 {
-                    ParserId = parserId,
-                    Password = sessionPassword
-                }, "Вход в сессию выполнен."));
+                    return OperationResult<ParserAuthResultDto>.Fail("Парсер не найден.");
+                }
             }
-            return Task.FromResult(OperationResult<ParserAuthResultDto>.Fail("Неверный ключ сессии или пароль."));
+            if (parser.Password != sessionPassword)
+                return OperationResult<ParserAuthResultDto>.Fail("Неверный ключ сессии или пароль.");
+
+            return OperationResult<ParserAuthResultDto>.Ok(new ParserAuthResultDto
+            {
+                ParserId = parserId,
+                Password = sessionPassword
+            }, "Вход в сессию выполнен.");
         }
+
     }
 }

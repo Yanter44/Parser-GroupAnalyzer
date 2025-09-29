@@ -5,12 +5,13 @@ namespace MpParserAPI.Interfaces
 {
     public interface IParserAuthentificate
     {
-        Task<bool> LoadAllParsersFromDbAsync();
+   //     Task<bool> LoadAllParsersFromDbAsync();
         Task<OperationResult<Guid>> RequestLoginAsync(string phone);
         Task<OperationResult<ParserAuthResultDto>> SubmitVerificationCodeFromTelegram(Guid parserId, int verificationCode);
         Task<OperationResult<ParserAuthResultDto>> SubmitTwoFactorPassword(Guid parserId, string twofactorpassword);
         Task<OperationResult<ParserAuthResultDto>> EnterToSessionByKeyAndPassword(Guid parserId, string sessionPassword);
         Task<OperationResult<bool>> ResendVerificationCode(Guid tempAuthId);
+        Task<OperationResult<bool>> VerifyTelegramCodeForParser(Guid parserId, int telegramCode);
 
     }
 }

@@ -8,13 +8,15 @@ using MpParserAPI.Enums;
 using MpParserAPI.Interfaces;
 using MpParserAPI.Models;
 using MpParserAPI.Models.Dtos;
+using MpParserAPI.Models.SpaceProxyDto;
+using MpParserAPI.Services;
 using MpParserAPI.Utils;
 using TL;
+using WTelegram;
 
 public class ParserService : IParser
 {
     private readonly ICloudinaryService _cloudinaryService;
-    private readonly IGenerator _generatorService;
     private readonly IDbContextFactory<ParserDbContext> _dbContextFactory;
     private readonly IParserDataStorage _parserStorage;
     private readonly IHubContext<ParserHub> _parserHubContext;
@@ -23,8 +25,8 @@ public class ParserService : IParser
     private readonly MpParserAPI.Interfaces.IRedis _redisService;
     private readonly ISubscriptionManager _subscriptionManager;
     private readonly IMessageQueueService _messageQueueService;
+    private readonly ISpaceProxy _spaceProxyService;
     public ParserService(ICloudinaryService cloudinaryService,
-                         IGenerator generator,
                          IDbContextFactory<ParserDbContext> dbContextFactory,
                          IParserDataStorage parserStorage,
                          IHubContext<ParserHub> parserhubContext,
@@ -32,10 +34,10 @@ public class ParserService : IParser
                          INotify notificationService,
                          MpParserAPI.Interfaces.IRedis redisService,
                          ISubscriptionManager subscriptionManager, 
-                         IMessageQueueService messageQueueService)
+                         IMessageQueueService messageQueueService,
+                         ISpaceProxy spaceProxyService)
     {
         _cloudinaryService = cloudinaryService;
-        _generatorService = generator;
         _dbContextFactory = dbContextFactory;
         _parserStorage = parserStorage;
         _parserHubContext = parserhubContext;
@@ -44,9 +46,11 @@ public class ParserService : IParser
         _redisService = redisService;
         _subscriptionManager = subscriptionManager;
         _messageQueueService = messageQueueService;
+        _spaceProxyService = spaceProxyService;
+
     }
 
-   
+
     private async Task HandleUpdate(Guid parserId, IObject updateObj)
 
     {
@@ -68,8 +72,152 @@ public class ParserService : IParser
             }
         }
     }
+    public async Task<bool> SetNewProxy(Guid parserId, string proxyAddress)
+    {
+        var proxy = await _spaceProxyService.GetProxyByAddress(proxyAddress);
+        if (proxy == null)
+            return false;
 
-  
+        if (!_parserStorage.TryGetParser(parserId, out var parser))
+            return false;
+
+        parser.ProxyAdress = proxy;
+        return true;
+    }
+    public async Task<bool> ReconnectWithNewProxy(Guid parserId, ProxyInfo proxy)
+    {
+        if (!_parserStorage.TryGetParser(parserId, out var parser))
+            return false;
+
+        bool wasParsingActive = parser.IsParsingStarted;
+        TimeSpan? remainingTime = null;
+        TimeSpan? originalParsingDelay = parser.ParsingDelay;
+        var keywords = parser.Keywords;
+        var targetGroups = parser.TargetGroups.ToList();
+
+        if (wasParsingActive)
+        {
+            if (parser.ParsingStartedAt.HasValue && originalParsingDelay.HasValue)
+            {
+                var elapsed = DateTime.UtcNow - parser.ParsingStartedAt.Value;
+                remainingTime = originalParsingDelay.Value - elapsed;
+                if (remainingTime < TimeSpan.Zero)
+                    remainingTime = TimeSpan.Zero;
+            }
+
+            await StopParsing(parserId);
+        }
+
+        var oldProxy = parser.ProxyAdress;
+        var oldProxyIp = oldProxy?.IpAddress;
+
+        try
+        {
+            if (!string.IsNullOrEmpty(oldProxyIp))
+                _spaceProxyService.TryRemoveProxy(oldProxyIp);
+
+             _spaceProxyService.AddOrUpdateProxy(
+                proxy.IpAddress,
+                parserId);
+
+            parser.ProxyAdress = proxy;
+            parser.DisposeData();
+
+            parser.Keywords = keywords;
+            parser.TargetGroups = targetGroups;
+
+            parser.Client = new Client(what =>
+            {
+                if (what == "session_pathname")
+                    return GetSessionPath(parser.Phone, isTemp: false);
+
+                return what switch
+                {
+                    "api_id" => "22262339",
+                    "api_hash" => "fc15371db5ea0ba274b93faf572aec6b",
+                    "phone_number" => parser.Phone,
+                    _ => null
+                };
+            });
+
+            parser.Client.TcpHandler = async (address, port) =>
+            {
+                var proxyClient = new Leaf.xNet.Socks5ProxyClient(proxy.IpAddress, proxy.Socks5Port)
+                {
+                    Username = proxy.Username,
+                    Password = proxy.Password
+                };
+                return proxyClient.CreateConnection(address, port);
+            };
+
+            await parser.Client.LoginUserIfNeeded();
+            parser.AuthState = TelegramAuthState.Authorized;
+
+            if (wasParsingActive)
+            {
+                parser.ParsingDelay = originalParsingDelay;
+
+                if (remainingTime.HasValue && remainingTime > TimeSpan.Zero)
+                {
+                    await StartParsing(parserId);
+                }
+                else if (originalParsingDelay.HasValue)
+                {
+                    parser.TotalParsingTime -= originalParsingDelay.Value;
+
+                    using var database = await _dbContextFactory.CreateDbContextAsync();
+                    var parserState = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
+                    if (parserState != null)
+                    {
+                        parserState.TotalParsingTime = parser.TotalParsingTime;
+                        await database.SaveChangesAsync();
+                    }
+                }
+            }
+            await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ParserChangedProxy", remainingTime?.ToString(@"hh\:mm\:ss") ?? "00:00:00");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при переподключении парсера {ParserId}", parserId);
+
+            if (parser.ProxyAdress?.IpAddress == proxy.IpAddress)
+            {
+                _spaceProxyService.TryRemoveProxy(proxy.IpAddress);
+                if (!string.IsNullOrEmpty(oldProxyIp))
+                    _spaceProxyService.AddOrUpdateProxy(oldProxyIp, parserId);
+
+                parser.ProxyAdress = oldProxy;
+            }
+
+            if (wasParsingActive && originalParsingDelay.HasValue)
+            {
+                parser.ParsingDelay = originalParsingDelay;
+                await StartParsing(parserId);
+            }
+
+            return false;
+        }
+    }
+    public async Task<ProxyInfo> GetAvailableProxyByProxyAdress(Guid parserId, string proxyAddress)
+    {
+        var proxy = await _spaceProxyService.GetAvailableProxyByProxyAdress(proxyAddress);
+        if (proxy == null)
+            return null;
+
+        if (!_spaceProxyService.TryGetProxyOwner(proxy.IpAddress, out var currentParserId) || currentParserId == parserId)
+        {
+            if (_parserStorage.TryGetParser(parserId, out var parser))
+            {
+                parser.ProxyAdress = proxy;
+                _spaceProxyService.AddOrUpdateProxy(proxy.IpAddress, parserId);
+
+                return proxy;
+            }
+        }
+        return null;
+    }
+
     public async Task<OperationResult<object>> SetGroupsNames(Guid parserId, IEnumerable<string> groupNames)
     {
         if (!_parserStorage.ContainsParser(parserId))
@@ -183,7 +331,6 @@ public class ParserService : IParser
 
     public async Task<bool> IsParserAuthValid(Guid parserId, string password)
     {
-
         if (_parserStorage.TryGetParser(parserId, out var parser))
         {
             if (parser.Password == password)
@@ -192,11 +339,130 @@ public class ParserService : IParser
         }
         return false;
     }
-   
+    private string GetSessionPath(string phone, bool isTemp)
+    {
+        var cleanedPhone = new string(phone.Where(char.IsDigit).ToArray());
+        var sessionsFolder = Path.Combine(AppContext.BaseDirectory, "sessions");
+        if (!Directory.Exists(sessionsFolder))
+            Directory.CreateDirectory(sessionsFolder);
+        return Path.Combine(sessionsFolder, $"{(isTemp ? "temp_session" : "session")}_{cleanedPhone}.session");
+    }
+    public async Task<ParserData> TryGetParserFromDb(Guid parserId)
+    {
+        await using var database = await _dbContextFactory.CreateDbContextAsync();
+        var parserState = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
+
+        if (parserState == null)
+            return null;
+
+        var parserData = new ParserData(parserState.ParserId, parserState.Password, parserState.Phone)
+        {
+            Keywords = parserState.Keywords,
+            TargetGroups = parserState.TargetGroups
+                                .Select(g => new InputPeerChannel(g.ChatId, g.AccessHash))
+                                .Cast<InputPeer>()
+                                .ToList(),
+            TargetGroupTitles = parserState.TargetGroups.Select(x => x.Title).ToList(),
+            IsParsingStarted = false,
+            TotalParsingTime = parserState.TotalParsingTime,
+            SubscriptionType = parserState.SubscriptionType,
+            SubscriptionEndDate = parserState.SubscriptionEndDate,
+        };
+
+        parserData.Client = new Client(key =>
+        {
+            if (key == "session_pathname")
+                return GetSessionPath(parserState.Phone, isTemp: false);
+
+            return key switch
+            {
+                "api_id" => "22262339",
+                "api_hash" => "fc15371db5ea0ba274b93faf572aec6b",
+                "phone_number" => parserData.Phone,
+                "verification_code" => null,
+                "password" => null,
+                _ => null
+            };
+        });
+
+        var proxy = await _spaceProxyService.GetAndSetAvailableProxy(parserData.Id);
+        if (proxy != null)
+        {
+            parserData.Client.TcpHandler = async (address, port) =>
+            {
+                var p = new Leaf.xNet.Socks5ProxyClient(proxy.IpAddress, proxy.Socks5Port)
+                {
+                    Username = proxy.Username,
+                    Password = proxy.Password
+                };
+                return p.CreateConnection(address, port);
+            };
+        }
+
+        try
+        {
+            var loginResult = await parserData.Client.Login(parserData.Phone);
+
+            if (loginResult == null) 
+            {
+                parserData.AuthState = TelegramAuthState.Authorized;
+                _logger.LogInformation("Парсер {ParserId} авторизован", parserState.ParserId);
+            }
+            else if (loginResult == "verification_code")
+            {
+                parserData.AuthState = TelegramAuthState.SessionExpired;
+                _logger.LogWarning("Для парсера {ParserId} требуется код подтверждения", parserState.ParserId);
+            }
+            else if (loginResult == "password")
+            {
+                parserData.AuthState = TelegramAuthState.SessionExpired;
+                _logger.LogWarning("Для парсера {ParserId} требуется 2FA пароль", parserState.ParserId);
+            }
+            else
+            {
+                parserData.AuthState = TelegramAuthState.Unauthorized;
+                _logger.LogWarning("Неожиданный результат логина: {LoginResult}", loginResult);
+            }
+        }
+        catch (RpcException ex) when (
+               ex.Message.Contains("AUTH_KEY_UNREGISTERED") ||
+               ex.Message.Contains("AUTH_KEY_INVALID") ||
+               ex.Message.Contains("SESSION_REVOKED") ||
+               ex.Message.Contains("SESSION_EXPIRED"))
+        {
+            parserData.AuthState = TelegramAuthState.Unauthorized;
+            _logger.LogError("Сессия {ParserId} недействительна (auth_key)", parserState.ParserId);
+        }
+        catch (Exception ex)
+        {
+            parserData.AuthState = TelegramAuthState.Unauthorized;
+            _logger.LogError(ex, "Ошибка при авторизации парсера {ParserId}", parserState.ParserId);
+        }
+
+        _parserStorage.AddOrUpdateParser(parserState.ParserId, parserData);
+        return parserData;
+    }
+
     public async Task<GetParserStateResponceDto> GetParserState(Guid parserId)
     {
         if (!_parserStorage.TryGetParser(parserId, out var parser) || parser.Client == null)
-            return null;
+        {
+            parser = await TryGetParserFromDb(parserId);
+            if (parser == null)
+            {
+                _logger.LogWarning("Парсер {ParserId} не найден", parserId);
+                return null;
+            }
+        }
+        switch (parser.AuthState)
+        {
+            case TelegramAuthState.SessionExpired:
+                return new GetParserStateResponceDto{ ErrorCode = ErrorCodes.NeedVerificationCode };
+
+            case TelegramAuthState.Unauthorized:
+                return new GetParserStateResponceDto { ErrorCode = ErrorCodes.SessionExpired };
+        }
+
 
         await using var db = _dbContextFactory.CreateDbContext();
 
@@ -284,6 +550,8 @@ public class ParserService : IParser
                 UserGroupsList = usergroupsList,
                 RemainingParsingTimeHoursMinutes = formattedAvailableParsingTime,
                 TotalParsingTime = formattedTotalParsingTime
+               
+
             },
             parserLogs = parserLogsRaw
         };
@@ -318,6 +586,7 @@ public class ParserService : IParser
         parser.ParsingTimer = new Timer(async _ =>
         {
             await StopParsing(parserId);
+            _notificationService.SendSimpleNotify(parserId, "Парсинг автоматически остановлен по истечении времени таймера⌛");
             _logger.LogInformation("Парсинг автоматически остановлен по таймеру для {ParserId}", parserId);
         },
         null,

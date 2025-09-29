@@ -18,8 +18,8 @@ namespace MpParserAPI.Services
         private readonly IHubContext<ParserHub> _parserHubContext;
         private readonly INotify _notificationService;
         private readonly IDbContextFactory<ParserDbContext> _dbContextFactory;
-        private readonly IParser _parserService;
         private ConcurrentDictionary<string, Guid> ProxyServersAndParsersIds = new ConcurrentDictionary<string, Guid>();
+        //public event Func<Guid, ProxyInfo, Task> ProxyChanged;
 
         //ip-address proxy and parserId 
         public SpaceProxyService(IHttpClientFactory httpClientFactory,
@@ -28,8 +28,7 @@ namespace MpParserAPI.Services
             ILogger<SpaceProxyService> logger,
             IHubContext<ParserHub> parserHub,
             INotify notificationService,
-            IDbContextFactory<ParserDbContext> dbcontextFactory,
-            IParser parserService)
+            IDbContextFactory<ParserDbContext> dbcontextFactory)
         {
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
@@ -38,164 +37,31 @@ namespace MpParserAPI.Services
             _parserHubContext = parserHub;
             _notificationService = notificationService;
             _dbContextFactory = dbcontextFactory;
-            _parserService = parserService;
         }
-
-        public async Task<bool> SetNewProxy(Guid parserId, string ProxyAdress)
+        public bool TryGetProxyOwner(string ipAddress, out Guid parserId)
         {
-            var httpClient = _httpClientFactory.CreateClient();
-            var apikey = _configuration["SpaceProxy:ApiKey"];
-            var response = await httpClient.GetAsync($"https://panel.spaceproxy.net/api/proxies/?api_key={apikey}");
-            response.EnsureSuccessStatusCode();
-
-            var result = await response.Content.ReadFromJsonAsync<SpaceProxyResponse>();
-            var listproxies = result.Proxies;
-            var proxyAddressIp = ProxyAdress.Split(':')[0];
-            var proxyAddressPort = ProxyAdress.Split(':')[1];
-
-            if (!_parserDataStorage.TryGetParser(parserId, out var parser))
-                return false;
-
-            foreach (var proxy in listproxies)
-            {
-                if (proxy.IpAddress.Equals(proxyAddressIp, StringComparison.OrdinalIgnoreCase) &&
-                    proxy.Socks5Port.ToString() == proxyAddressPort)
-                {
-                    parser.ProxyAdress = proxy;
-                    return true;
-                }
-            }
-            return false;
+            return ProxyServersAndParsersIds.TryGetValue(ipAddress, out parserId);
         }
 
-        public async Task<bool> ReconnectWithNewProxy(Guid parserId, ProxyInfo proxy)
+        public bool TryRemoveProxy(string ipAddress)
         {
-            if (!_parserDataStorage.TryGetParser(parserId, out var parser))
+            if (string.IsNullOrEmpty(ipAddress))
                 return false;
 
-            bool wasParsingActive = parser.IsParsingStarted;
-            TimeSpan? remainingTime = null;
-            TimeSpan? originalParsingDelay = parser.ParsingDelay;
-            var keywords = parser.Keywords;
-            var targetGroups = parser.TargetGroups.ToList();
-
-            if (wasParsingActive)
-            {
-                if (parser.ParsingStartedAt.HasValue && originalParsingDelay.HasValue)
-                {
-                    var elapsed = DateTime.UtcNow - parser.ParsingStartedAt.Value;
-                    remainingTime = originalParsingDelay.Value - elapsed;
-                    if (remainingTime < TimeSpan.Zero)
-                        remainingTime = TimeSpan.Zero;
-                }
-
-                await _parserService.StopParsing(parserId);
-            }
-
-            var oldProxy = parser.ProxyAdress;
-            var oldProxyIp = oldProxy?.IpAddress;
-
-            try
-            {
-                if (!string.IsNullOrEmpty(oldProxyIp))
-                    ProxyServersAndParsersIds.TryRemove(oldProxyIp, out _);
-
-                ProxyServersAndParsersIds.AddOrUpdate(
-                    proxy.IpAddress,
-                    parserId,
-                    (key, oldValue) => parserId);
-
-                parser.ProxyAdress = proxy;
-                parser.DisposeData();
-
-                parser.Keywords = keywords;
-                parser.TargetGroups = targetGroups;
-
-                parser.Client = new Client(what =>
-                {
-                    if (what == "session_pathname")
-                        return GetSessionPath(parser.Phone, isTemp: false);
-
-                    return what switch
-                    {
-                        "api_id" => "22262339",
-                        "api_hash" => "fc15371db5ea0ba274b93faf572aec6b",
-                        "phone_number" => parser.Phone,
-                        _ => null
-                    };
-                });
-
-                parser.Client.TcpHandler = async (address, port) =>
-                {
-                    var proxyClient = new Leaf.xNet.Socks5ProxyClient(proxy.IpAddress, proxy.Socks5Port)
-                    {
-                        Username = proxy.Username,
-                        Password = proxy.Password
-                    };
-                    return proxyClient.CreateConnection(address, port);
-                };
-
-                await parser.Client.LoginUserIfNeeded();
-                parser.AuthState = TelegramAuthState.Authorized;
-
-                if (wasParsingActive)
-                {
-                    parser.ParsingDelay = originalParsingDelay;
-
-                    if (remainingTime.HasValue && remainingTime > TimeSpan.Zero)
-                    {
-                        await _parserService.StartParsing(parserId);
-                    }
-                    else if (originalParsingDelay.HasValue)
-                    {
-                        parser.TotalParsingTime -= originalParsingDelay.Value;
-
-                        using var database = await _dbContextFactory.CreateDbContextAsync();
-                        var parserState = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
-                        if (parserState != null)
-                        {
-                            parserState.TotalParsingTime = parser.TotalParsingTime;
-                            await database.SaveChangesAsync();
-                        }
-                    }
-                }                
-                await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ParserChangedProxy", remainingTime?.ToString(@"hh\:mm\:ss") ?? "00:00:00");
-                return true;
-            }          
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при переподключении парсера {ParserId}", parserId);
-
-                if (parser.ProxyAdress?.IpAddress == proxy.IpAddress)
-                {
-                    ProxyServersAndParsersIds.TryRemove(proxy.IpAddress, out _);
-                    if (!string.IsNullOrEmpty(oldProxyIp))
-                        ProxyServersAndParsersIds.TryAdd(oldProxyIp, parserId);
-
-                    parser.ProxyAdress = oldProxy;
-                }
-
-                if (wasParsingActive && originalParsingDelay.HasValue)
-                {
-                    parser.ParsingDelay = originalParsingDelay;
-                    await _parserService.StartParsing(parserId);
-                }
-
-                return false;
-            }
+            return ProxyServersAndParsersIds.TryRemove(ipAddress, out _);
         }
 
-        public async Task<ProxyInfo> GetAvailableProxyByProxyAdress(string proxyAddress, Guid parserId)
+        public void AddOrUpdateProxy(string ipAddress, Guid parserId)
+        {
+            if (string.IsNullOrEmpty(ipAddress))
+                return;
+
+            ProxyServersAndParsersIds.AddOrUpdate(ipAddress, parserId, (key, oldValue) => parserId);
+        }
+        public async Task<ProxyInfo> GetProxyByAddress(string proxyAddress)
         {
             if (string.IsNullOrWhiteSpace(proxyAddress))
                 return null;
-
-            var parts = proxyAddress.Split(':');
-            if (parts.Length < 2) return null;  
-
-            var proxyAddressIp = parts[0];
-            int proxyAddressPort;
-            if (!int.TryParse(parts[1], out proxyAddressPort)) return null;
 
             var httpClient = _httpClientFactory.CreateClient();
             var apiKey = _configuration["SpaceProxy:ApiKey"];
@@ -203,32 +69,42 @@ namespace MpParserAPI.Services
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<SpaceProxyResponse>();
+            var parts = proxyAddress.Split(':');
+            var ip = parts[0];
+            var port = parts[1];
 
-            foreach (var proxy in result.Proxies)
-            {
-                if (proxy.IpAddress.Equals(proxyAddressIp, StringComparison.OrdinalIgnoreCase) &&
-                    proxy.Socks5Port == proxyAddressPort)
-                {
-     
-                    if (!ProxyServersAndParsersIds.TryGetValue(proxy.IpAddress, out var currentParserId) ||
-                        currentParserId == parserId)
-                    {
-                        return proxy;
-                    }
-                }
-            }
-            return null;
+            return result.Proxies.FirstOrDefault(p =>
+                p.IpAddress.Equals(ip, StringComparison.OrdinalIgnoreCase) &&
+                p.Socks5Port.ToString() == port
+            );
         }
+
+
+
+        public async Task<ProxyInfo> GetAvailableProxyByProxyAdress(string proxyAddress)
+        {
+            if (string.IsNullOrWhiteSpace(proxyAddress))
+                return null;
+
+            var parts = proxyAddress.Split(':');
+            if (parts.Length < 2) return null;
+
+            var proxyIp = parts[0];
+            if (!int.TryParse(parts[1], out var proxyPort)) return null;
+
+            var httpClient = _httpClientFactory.CreateClient();
+            var apiKey = _configuration["SpaceProxy:ApiKey"];
+            var response = await httpClient.GetAsync($"https://panel.spaceproxy.net/api/proxies/?api_key={apiKey}");
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<SpaceProxyResponse>();
+            return result.Proxies.FirstOrDefault(p =>
+                p.IpAddress.Equals(proxyIp, StringComparison.OrdinalIgnoreCase)
+                && p.Socks5Port == proxyPort);
+        }
+
 
         //пока ниже лишнее всеее________________________________________________________
-        private string GetSessionPath(string phone, bool isTemp)
-        {
-            var cleanedPhone = new string(phone.Where(char.IsDigit).ToArray());
-            var sessionsFolder = Path.Combine(AppContext.BaseDirectory, "sessions");
-            if (!Directory.Exists(sessionsFolder))
-                Directory.CreateDirectory(sessionsFolder);
-            return Path.Combine(sessionsFolder, $"{(isTemp ? "temp_session" : "session")}_{cleanedPhone}.session");
-        }
 
         public async Task<ProxyInfo> GetAndSetAvailableProxy(Guid parserId)
         {

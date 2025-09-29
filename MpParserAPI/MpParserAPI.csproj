@@ -35,7 +35,7 @@
     <PackageReference Include="StarkSoftProxy" Version="1.6.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
     <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="8.1.1" />
-    <PackageReference Include="WTelegramClient" Version="4.3.6" />
+    <PackageReference Include="WTelegramClient" Version="4.3.10" />
   </ItemGroup>
 
 </Project>

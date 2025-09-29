@@ -119,9 +119,9 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 
     var parserService = scope.ServiceProvider.GetRequiredService<IParserAuthentificate>();
-    var result =  await parserService.LoadAllParsersFromDbAsync();
-    if (!result)
-        return;
+    //var result =  await parserService.LoadAllParsersFromDbAsync();
+    //if (!result)
+    //    return;
 }
 
 app.MapHub<ParserHub>("/parserHub");

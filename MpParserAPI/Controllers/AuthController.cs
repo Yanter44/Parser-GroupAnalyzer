@@ -74,6 +74,25 @@ namespace MpParserAPI.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
+        [HttpPost("VerifyTelegramCodeForParser")]
+        public async Task<IActionResult> VerifyTelegramCodeForParser([FromBody] VerificationCodeDto modelDto)
+        {
+            if (modelDto.TelegramCode == 0)
+                return BadRequest("Код не должен быть пустым.");
+
+            if (!Request.Cookies.TryGetValue("ParserId", out var parserIdStr)
+                || !Guid.TryParse(parserIdStr, out var parserId))
+            {
+                return BadRequest("ParserId отсутствует или некорректен.");
+            }
+
+            var result = await _parserAuthentificate.VerifyTelegramCodeForParser(parserId, modelDto.TelegramCode);
+
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+
+
         [HttpPost("SendATwoFactorPassword")]
         public async Task<IActionResult> SendATwoFactorPassword([FromBody] TwoFactorPasswordDto modelDto)
         {

@@ -64,11 +64,14 @@ namespace MpParserAPI.Controllers
             return Ok("Парсер остановлен.");
         }
 
-        [ParserAuthorize]
+      //  [ParserAuthorize]
         [HttpGet("GetParserState")]
         public async Task<IActionResult> GetParserState()
         {
-            var parserId = (Guid)HttpContext.Items["ParserId"];
+            var parserIdStr = HttpContext.Request.Cookies["ParserId"];
+            if (!Guid.TryParse(parserIdStr, out var parserId))
+                return Unauthorized("ParserId отсутствует или некорректен");
+
             _logger.LogInformation("GetParserState: старт для parserId={ParserId}", parserId);
 
             var parserData = await _parser.GetParserState(parserId);

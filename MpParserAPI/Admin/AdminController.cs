@@ -13,14 +13,17 @@ namespace MpParserAPI.Admin
     {
         private readonly IAdmin _adminService;
         private readonly IParserDataStorage _parserDataStorage;
-        private readonly ISpaceProxy _spaceproxyService;
+        private readonly IParser _parserService;
+        private readonly ISpaceProxy _spaceProxyService;
         private readonly IDbContextFactory<ParserDbContext> _dbContextFactory;
         public AdminController(IAdmin adminService, IParserDataStorage parserDataStorage, 
+            IParser parserService,
             ISpaceProxy spaceproxyService, IDbContextFactory<ParserDbContext> dbContextFactory)
         {
             _adminService = adminService;
             _parserDataStorage = parserDataStorage;
-            _spaceproxyService = spaceproxyService;
+            _parserService = parserService;
+            _spaceProxyService = spaceproxyService;
             _dbContextFactory = dbContextFactory;
         }
 
@@ -66,16 +69,16 @@ namespace MpParserAPI.Admin
         public async Task<IActionResult> SetNewProxy(SetNewProxyDto model)
         {
             var parserId = Guid.Parse(model.ParserId);
-            var result = await _spaceproxyService.SetNewProxy(parserId, model.ProxyAdress);
+            var result = await _parserService.SetNewProxy(parserId, model.ProxyAdress);
             if (result)
             {
-                var availableproxy = await _spaceproxyService.GetAvailableProxyByProxyAdress(
-                    model.ProxyAdress,
-                    parserId);
+                var availableproxy = await _parserService.GetAvailableProxyByProxyAdress(
+                    parserId,
+                    model.ProxyAdress);
 
                 if (availableproxy != null)
                 {
-                    var reconnectedresult = await _spaceproxyService.ReconnectWithNewProxy(
+                    var reconnectedresult = await _parserService.ReconnectWithNewProxy(
                         parserId,
                         availableproxy);
 
