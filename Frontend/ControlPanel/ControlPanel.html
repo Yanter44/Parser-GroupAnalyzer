@@ -12,7 +12,14 @@
 
 <body>
   <div id="preloader">
-    <img src="./Assets/Loading.gif" alt="Loading..." class="preloaderGif" />
+    <lottie-player
+    src="LoadingAnimation.json"
+    background="transparent"
+    speed="2.1"
+    style="width: 75px; height: 75px;"
+    loop
+    autoplay>
+</lottie-player>
     <span class="LoadingText">Загрузка...</span>
   </div>
 
@@ -39,14 +46,16 @@
     </button>
   </div>
 
+  <span class="RemainingTimeToStopParser"></span>
+
   <div class="FormGroupsContainer">
     <div class="FormGroup">
-      <label for="keywordInput">Ключевые слова:</label>
+      <label for="keywordInput">Ключевые слова</label>
       <button class="AddTagButton" id="AddKeywordsButton" onclick="openModal('keywords')">Добавить</button>
     </div>
 
     <div class="FormGroup">
-      <label for="groupInput">Группы:</label>
+      <label for="groupInput">Группы</label>
       <button class="AddTagButton"  id="AddGroupsButton" onclick="openModal('groups')">Добавить</button>
     </div>
   </div>
@@ -67,7 +76,7 @@
   <div class="modalContent" onclick="event.stopPropagation();">
     <button class="closeButton" onclick="closeModal()">&times;</button>
     <label id="tagifyLabel"></label>
-    <div class="tagsImageAndLabel">
+   <div class="tagsImageAndLabel">
      <img class="tagImage" src="Assets/Tags.png"/>
      <label id="tagCount">Кол-во тегов: 0</label>
    </div>
@@ -86,7 +95,7 @@
     
     <div class="PanelContent">
       <div class="UserImageContainer">
-        <img src="" alt="User Avatar" class="UserImage" />
+        <img src="..." alt="User Avatar" class="UserImage" />
         <span class="ClientTelegramUserName">dfsafas</span>
       </div> 
 
@@ -100,12 +109,12 @@
       <div class="vertical-separator"></div>
 
       <div class="PasswordParserContainer">
-         <div class="PasswordHeaderContainerContainer">
-           <span class="PasswordNameText">Ваш Пароль</span>
-           <img src="./Assets/PasswordImage.png" />
-         </div>
-         <span class="PasswordValueText"></span>
-       </div>
+        <div class="PasswordHeaderContainerContainer">
+          <span class="PasswordNameText">Ваш Пароль</span>
+          <img src="./Assets/PasswordImage.png" />
+        </div>
+        <span class="PasswordValueText"></span>
+      </div>
       <div class="vertical-separator"></div>
 
       <div class="TotalParsingTimeContainer">
@@ -114,7 +123,6 @@
           <img src="./Assets/Timer.png"/>
         </div>
         <span class="TotalParsingTimeValueText"></span>
-
       </div>
       
       <div class="vertical-separator"></div>
@@ -132,6 +140,7 @@
   </div>
 </section>
 
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
   <script src="../Config.js"></script>

@@ -6,13 +6,29 @@
     --tagify-dd-item-pad:.3em .5em;
     --tagify-dd-max-height:300px
 }
+.tagify {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    flex-direction: row;
+}
+
+.tagify .tagify__input {
+    order: 0; 
+    flex-grow: 1;
+    min-width: 80px;
+    text-align: left;
+}
+
+
 .tagify{
     --tags-disabled-bg:#F1F1F1;
     --tags-border-color:#DDD;
     --tags-hover-border-color:#CCC;
     --tags-focus-border-color:#3595f6;
-    --tag-border-radius:3px;
+    --tag-border-radius: 10px;
     --tag-bg:#E5E5E5;
+     background: #82828200;
     --tag-hover:#D3E2E2;
     --tag-text-color:black;
     --tag-text-color--edit:black;

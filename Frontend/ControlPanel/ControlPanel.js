@@ -12,6 +12,15 @@ const savedTags = {
     groups: []
 };
 
+const ErrorCodes = {
+    NEED_VERIFICATION_CODE: "NEED_VERIFICATION_CODE",
+    NEED_TWO_FACTOR_PASSWORD: "NEED_TWO_FACTOR_PASSWORD",
+    INVALID_VERIFICATION_CODE: "INVALID_VERIFICATION_CODE",
+    INVALID_TWO_FACTOR_PASSWORD: "INVALID_TWO_FACTOR_PASSWORD",
+    SESSION_EXPIRED: "SESSION_EXPIRED",
+    PHONE_ALREADY_IN_USE: "PHONE_ALREADY_IN_USE"
+};
+
 //DomElements
 const AddGroupsButton = document.getElementById('AddGroupsButton');
 const AddKeywordsButton = document.getElementById('AddKeywordsButton');
@@ -35,19 +44,25 @@ async function InitializePage() {
     });
 
     try {
+        console.log("пробуем отправить запрос на getparserState");
         const response = await fetch(`${config.API_BASE}/ParserConfig/GetParserState`, {
             method: 'GET',
             credentials: 'include'
         });
-
+      
         if (response.status === 401) {
-            location.href = `${config.DefaultStartFileLocation}/index.html`;
+               console.log(response);
+            //location.href = `${config.DefaultStartFileLocation}/index.html`;
             return;
         }
 
         const result = await response.json();
         console.log(result);
 
+          if (result.errorCode === ErrorCodes.NEED_VERIFICATION_CODE) {
+            location.href = `${config.DefaultStartFileLocation}/VerifyAccountPage/VerifyAccountPage.html`
+            return;
+        }
         const parserLogs = result.parserLogs || [];
 
         if (parserLogs.length > 0) {
@@ -239,11 +254,12 @@ function openModal(type) {
         duplicates: false,
         delimiters: null,
         dropdown: {
-            maxItems: 10,
+            maxItems: 20,
             enabled: 0,
             closeOnSelect: false
         }
     });
+
 
     tagifyInstance.on('change', e => {
         const tags = tagifyInstance.value;
@@ -265,7 +281,7 @@ function closeModal() {
     document.getElementById("overlay").classList.remove("active");
     document.getElementById("tagifyModal").classList.remove("active");
     const tagslabel = document.getElementById("tagCount");
-    tagslabel.textContent = "";
+    tagslabel.textContent = "Кол-во тегов: 0";
 
     if (tagifyInstance) tagifyInstance.destroy();
     tagifyInstance = null;

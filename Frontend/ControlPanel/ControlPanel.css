@@ -36,20 +36,20 @@ html {
 }
 
 body {
-  height: auto;
-  min-height: 100vh;
-  overflow: auto;
-  overflow-x: hidden;
-  font-family: Arial, sans-serif;
-  background: linear-gradient(to bottom, #2F1638 0%, #1C2032 21%, #2C4092 84%, #2C4092 100%);
-  background-attachment: fixed;
-  color: var(--text-primary);
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+    overflow-x: hidden;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(to bottom, #000000 0%, #282c40 21%, #3e2c8c 84%, #432c92 100%);
+    background-attachment: fixed;
+    color: var(--text-primary);
 }
 
 #preloader {
   position: fixed;
   inset: 0;
-  background: var(--bg-primary);
+  background: linear-gradient(to bottom, #000000, #16081f);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -69,22 +69,25 @@ body {
 }
 
 .AddTagButton {
-  background-color: #554D66;
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  padding: var(--padding-base);
-  border-radius: var(--border-radius);
-  font-size: var(--font-size-base);
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--transition);
-  box-shadow: var(--shadow-sm);
-  margin-top: var(--margin-top-sm);
-  width: 125px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    color: var(--text-primary);
+    padding: var(--padding-base);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow: hidden;
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+    margin-top: var(--margin-top-sm);
+    width: 125px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .AddTagButton:hover {
@@ -111,13 +114,22 @@ body {
   transform: translate(-50%, -50%);
   background: #100E28;
   padding: 30px;
-  border-radius: 10px;
   z-index: 1101;
   display: none;
   box-shadow: var(--shadow-sm);
   animation: fadeIn 0.3s ease;
   width: 40%;
+  background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.05) 100%
+    );
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
+
 #tagifyModal.hidden {
   display: none;
 }
@@ -256,12 +268,52 @@ body {
   transform: scale(0.98);
   background: #1c7430;
 }
+.file-input-wrapper {
+    position: relative;
+    width: 100%;
+}
 
+.hidden {
+    display: none;
+}
+
+.file-input-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-accent);
+    background-color: #0000002e;
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    cursor: pointer;
+    transition: var(--transition);
+    width: 100%;
+    min-height: 120px;
+    text-align: center;
+}
+
+.file-input-label:hover {
+    background-color: #0000004d;
+    border-color: var(--border-accent-hover);
+}
+
+.file-text {
+    font-weight: 500;
+}
+
+.file-not-selected {
+    font-size: 0.9em;
+    opacity: 0.7;
+}
 #InputKeywordsFile {
   padding: 12px;
   border-radius: var(--border-radius);
   border: 1px solid var(--border-accent);
-  background-color: var(--bg-tertiary);
+  background-color: #0000002e;
   color: var(--text-primary);
   font-size: var(--font-size-base);
   cursor: pointer;
@@ -299,7 +351,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #1b0d22;
+  background-color: #19111d87;
   padding: 10px 20px;
   position: relative;
   width: 100%;
@@ -419,7 +471,7 @@ body {
   padding: var(--padding-base);
   color: var(--text-primary);
   border: none;
-  border-radius: 4px;
+  border-radius: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -526,7 +578,7 @@ body {
 .ThisIsSpamButton {
   padding: 8px 16px;
   border: none;
-  border-radius: 4px;
+ border-radius: 10px;
   cursor: pointer;
   color: var(--text-primary);
   transition: var(--transition);
@@ -860,7 +912,7 @@ body {
 
   .GoToTelegramButton,
   .ThisIsSpamButton {
-    width: 100%;
+    width: 90%;
     margin: 5px 0 0;
     min-width: 90px;
   }

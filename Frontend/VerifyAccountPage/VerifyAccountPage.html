@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="VerifyAccountPage.css">
+  <title>Вход</title>
+  <link rel="icon" href="../mpParserLogo.ico" type="image/x-icon" />
+</head>
+<body>
+    <div class="ErrorPopup hidden" id="ErrorPopup">Произошла ошибка</div>
+  <div class="AuthContainer">   
+    <form class="ConfirmCodeForm">
+      <label class="ConfirmCodeByNumberLabel">Ввдите код подтверждения</label>
+      <div class="ConfirmCodeByNumber">
+        <input class="ConfirmCodeInputSingle" type="text" maxlength="1" />
+        <input class="ConfirmCodeInputSingle" type="text" maxlength="1" />
+        <input class="ConfirmCodeInputSingle" type="text" maxlength="1" />
+        <input class="ConfirmCodeInputSingle" type="text" maxlength="1" />
+        <input class="ConfirmCodeInputSingle" type="text" maxlength="1" />
+      </div>
+    
+      <button type="submit" class="ConfirmCodeButton">Подтвердить</button>
+
+      <button type="button" onclick="ResendTwoFactorCode()" class="ResendCodeButton">Отправить код повторно</button>
+    </form>
+
+    <form class="ConfirmTwoFactoPasswordForm">
+      <label class="ConfirmTwoFactoPasswordFormLabel">Введите ваш двухфакторный пароль</label>
+      <div class="ConfirmTwoFactoPassword">
+        <input class="TwoFactorPassswordInput" type="text" id="TwoFactorPassword" name="TwoFactorPassword" required />
+      </div>
+      <button type="submit" class="ConfirmTwoFactoPasswordButton">Подтвердить</button>
+    </form>
+  </div>
+
+  <script src="../Config.js"></script>
+  <script src="VerifyAccountPage.js"></script>
+</body>
+</html>
