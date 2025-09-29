@@ -82,14 +82,7 @@
    </div>
     <label id="labelForKeywords">Укажите файл с ключевыми словами, или введите их вручную</label>
     <input type="file" id="InputKeywordsFile" accept=".txt"/>
-     <input 
-    id="tagifyInput" 
-    placeholder=""
-    readonly
-    onfocus="this.removeAttribute('readonly'); event.stopPropagation();"
-    onblur="this.setAttribute('readonly', '');"
-    style="caret-color: auto; -webkit-user-select: text; user-select: text;"
-/>
+    <input id="tagifyInput" placeholder="" />
     <button class="SaveTagsButton" onclick="saveTags()">Сохранить</button>
   </div>
 </div>
