@@ -221,6 +221,10 @@ function CopyParserIdAndPassword(){
 }
 
 function openModal(type) {
+     if (window.Telegram && window.Telegram.WebApp) {
+        window.Telegram.WebApp.disableVerticalSwipes();
+        window.Telegram.WebApp.expand();
+    }
     currentModal = type;
     document.getElementById("overlay").classList.add("active");
     document.getElementById("tagifyModal").classList.add("active");
