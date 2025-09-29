@@ -11,13 +11,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const tg = window.Telegram.WebApp;
             tg.ready();
 
-            // Полностью скрываем BackButton (стрелку)
             if (tg.BackButton) {
                 tg.BackButton.hide();
                 console.log('✅ BackButton hidden, only default Close is visible');
             }
 
-            // Можно управлять MainButton или SecondaryButton, если нужно
             tg.MainButton.hide();
             if (tg.SecondaryButton) tg.SecondaryButton.hide();
 
