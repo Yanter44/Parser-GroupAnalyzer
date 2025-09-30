@@ -32,13 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     initTelegramWebApp();
-
-
-
-
-
-
-
+    
   const authForm = document.querySelector(".AuthForm");
   const confirmCodeForm = document.querySelector(".ConfirmCodeForm");
   const confirmTwoFactoPasswordForm = document.querySelector(".ConfirmTwoFactoPasswordForm");

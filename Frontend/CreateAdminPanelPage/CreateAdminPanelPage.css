@@ -2,24 +2,11 @@ body {
     margin: 0;
     padding: 0;
     font-family: 'Segoe UI', sans-serif;
-     background-color: #0f1117;
+    background: linear-gradient(to bottom, #000000, #1b183a);
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
-  }
-
-  .AuthContainer {
-    background: #0f1117;
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 8px 20px rgb(255 255 255 / 10%);
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
-    color: white;
-    position: relative;
-    top: -10%;
   }
 
   .AuthTitle {
@@ -40,31 +27,21 @@ body {
     font-weight: 500;
   }
 
-  .AuthInput {
-    width: 90%;
-    padding: 0.75rem;
-    background: #000000;
-    border: 1px solid #cccccc;
-    border-radius: 8px;
-    font-size: 1rem;
-    text-align: center;
-    transition: border-color 0.3s;
-    color: white;
-  }
-
   .AuthInput:focus {
     border-color: #005ce6;
     outline: none;
   }
 
   .AuthButton {
-    width: 100%;
+    width: 60%;
+    font-weight: 500;
     padding: 0.75rem;
-    background-color: #1a6fff;
+    background-color: #315592;
     border: none;
     border-radius: 8px;
     color: white;
     font-size: 1rem;
+    margin-top: 15px;
     cursor: pointer;
     transition: background-color 0.3s;
   }
@@ -85,14 +62,7 @@ body {
     justify-content: center;
     gap: 5%;
 }
-.ConfirmCodeInputSingle{
-    color: black;
-    width: 10%;
-    text-align: center;
-    border-radius: 10px;
-    border: none;
-    height: 6vh;
-}
+
 .ConfirmCodeByNumberLabel{
    color:white;
 }
@@ -100,9 +70,9 @@ body {
   display:none;
 }
 .ConfirmCodeButton{
-    width: 100%;
+    width: 70%;
     padding: 0.75rem;
-    background-color: #1a6fff;
+    background-color: #465292;
     border: none;
     border-radius: 8px;
     color: white;
@@ -210,4 +180,78 @@ input[type=number]::-webkit-inner-spin-button {
     background-color: #cccccc;
     cursor: not-allowed;
     opacity: 0.7;
+}
+
+.AuthInput{
+      width: 90%;
+    padding: 10px;
+    background: #32323240;
+    border: 1px solid #ffffff14;
+    border-radius: 10px;
+    font-size: 1rem;
+    text-align: center;
+    transition: border-color 0.3s;
+    color: white;
+    cursor: pointer;
+}
+@media(min-width: 450px) {
+  .AuthContainer {
+   padding: 2rem;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 30%, rgba(255, 255, 255, 0.1) 70%, rgba(255, 255, 255, 0.15) 100%);
+    backdrop-filter: blur(25px) saturate(200%);
+    -webkit-backdrop-filter: blur(25px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 24px;
+   
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    color: white;
+    position: relative;
+    top: -10%;
+  }
+  
+  .AuthTitle {
+    text-align: center;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: #ffffff;
+  }
+  .ConfirmCodeInputSingle{
+    color: black;
+    width: 10%;
+    text-align: center;
+    border-radius: 10px;
+    border: none;
+    height: 6vh;
+  }
+}
+@media (max-width: 450px) {
+  .AuthContainer {
+    padding: 2rem;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    color: white;
+    position: relative;
+    top: -10%;
+}
+.AuthTitle {
+    text-align: center;
+    position: relative;
+    font-size: 30px;
+    color: #ffffff;
+    font-weight: 300;
+    display: flex;
+    margin-bottom: 50px;
+}
+ .ConfirmCodeInputSingle{
+    color: black;
+    width: 9%;
+    text-align: center;
+    border-radius: 10px;
+    border: none;
+    height: 4vh;
+  }
+
 }
