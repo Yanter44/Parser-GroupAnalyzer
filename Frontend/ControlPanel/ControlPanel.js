@@ -221,11 +221,34 @@ function CopyParserIdAndPassword(){
 }
 
 function openModal(type) {
+	 const isMobile = window.innerWidth <= 768;
+    currentModal = type;
+
+    if (type === 'groups' && isMobile) {
+        const sheet = document.getElementById('bottomSheet');
+        const sheetLabel = document.getElementById('sheetLabel');
+        const sheetContent = document.getElementById('sheetContent');
+
+        sheetLabel.textContent = "Выберите группы";
+        sheetContent.innerHTML = '';
+
+        (window.userGroupsList ?? []).forEach(group => {
+            const div = document.createElement('div');
+            div.textContent = group;
+            div.classList.add('sheet-item');
+            div.onclick = () => div.classList.toggle('selected');
+            sheetContent.appendChild(div);
+        });
+
+        const saveBtn = document.getElementById('sheetSaveButton');
+        sheet.classList.add('active');
+        return; 
+    }
+	
      if (window.Telegram && window.Telegram.WebApp) {
         window.Telegram.WebApp.disableVerticalSwipes();
         window.Telegram.WebApp.expand();
     }
-    currentModal = type;
     document.getElementById("overlay").classList.add("active");
     document.getElementById("tagifyModal").classList.add("active");
 
@@ -298,10 +321,12 @@ function updateTagCounts(tagsLenght) {
 }
 
 async function saveTags() {
-    const tags = tagifyInstance.value.map(item => item.value);
-    const combinedTags = [...tags];
+    console.log(currentModal + " это нынешняя модалка");
 
     if (currentModal === 'keywords') {
+        const tags = tagifyInstance ? tagifyInstance.value.map(item => item.value) : [];
+        const combinedTags = [...tags];
+
         const fileInput = document.getElementById("InputKeywordsFile");
         const file = fileInput.files[0];
 
@@ -309,11 +334,9 @@ async function saveTags() {
             try {
                 const text = await file.text();
                 const lines = text
-                    .split(/\r?\n/) 
+                    .split(/\r?\n/)
                     .map(line => line.trim())
                     .filter(line => line.length > 0);
-
-             
 
                 combinedTags.push(...lines);
             } catch (err) {
@@ -324,18 +347,24 @@ async function saveTags() {
         }
 
         savedTags[currentModal] = combinedTags;
-
         console.log(`keywords:`, combinedTags);
 
         await fetch(`${config.API_BASE}/ParserConfig/AddParserKeywords`, {
             method: 'POST',
             credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(combinedTags)
         });
+
     } else if (currentModal === 'groups') {
+        let tags = [];
+        if (window.innerWidth <= 768) {
+            const sheetContent = document.getElementById('sheetContent');
+            tags = Array.from(sheetContent.querySelectorAll('.selected')).map(d => d.textContent);
+        } else if (tagifyInstance) {
+            tags = tagifyInstance.value.map(item => item.value);
+        }
+
         savedTags[currentModal] = tags;
 
         console.log(`groups:`, tags);
@@ -343,13 +372,16 @@ async function saveTags() {
         await fetch(`${config.API_BASE}/ParserConfig/AddGroupsToParser`, {
             method: 'POST',
             credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ groupNames: tags })
         });
+
+        if (window.innerWidth <= 768) {
+            document.getElementById('bottomSheet').classList.remove('active');
+        } else {
+            closeModal();
+        }
     }
-    closeModal();
 }
 
 //Таймер

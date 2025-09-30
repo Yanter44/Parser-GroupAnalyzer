@@ -87,6 +87,17 @@
   </div>
 </div>
 
+<div id="bottomSheet" class="bottom-sheet">
+  <div class="sheet-header">
+    <span id="sheetLabel">Выберите</span>
+    <button class="closeButton" onclick="document.getElementById('bottomSheet').classList.remove('active')">&times;</button>
+  </div>
+  <div id="sheetContent" class="sheet-content">
+
+  </div>
+  <button id="sheetSaveButton" class="sheet-save-button" onclick="saveTags()">Сохранить</button>
+</div>
+
 <div id="overlay" class="overlay hidden"></div>
 
 <section class="InformationAboutClientPanel hidden" id="sidePanel">
