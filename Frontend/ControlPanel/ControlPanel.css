@@ -798,10 +798,11 @@ body {
 }
 
 .ParserIdContainer, .PasswordParserContainer, .TotalParsingTimeContainer {
-    display: flex;
+   display: flex;
     flex-direction: column;
     align-items: center;
     gap: 10px;
+    background: rgb(255 255 255 / 0%);
     padding: 15px;
     border-radius: 10px;
     backdrop-filter: blur(10px);
