@@ -49,12 +49,6 @@ async function InitializePage() {
             method: 'GET',
             credentials: 'include'
         });
-      
-        if (response.status === 401) {
-               console.log(response);
-            //location.href = `${config.DefaultStartFileLocation}/index.html`;
-            return;
-        }
 
         const result = await response.json();
         console.log(result);
@@ -80,6 +74,8 @@ async function InitializePage() {
                 const safeMessageText = escapeHtml(element.messageText);
                 const safeFirstName = escapeHtml(element.firstName);
                 const safeMessageTime = escapeHtml(element.messageTime);
+                const localTime = new Date(safeMessageTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                console.log(localTime);
 
                 const img = document.createElement('img');
                 img.src = sageProfileImageUrl;
@@ -96,7 +92,7 @@ async function InitializePage() {
 
                 const messageTimeDiv = document.createElement('div');
                 messageTimeDiv.className = 'MessageTime';
-                messageTimeDiv.textContent = safeMessageTime;
+                messageTimeDiv.textContent = localTime;
 
                 const spamButton = document.createElement('button');
                 spamButton.className = 'ThisIsSpamButton';
@@ -135,8 +131,9 @@ async function InitializePage() {
         savedTags.groups = Array.isArray(result.parserDataResponceDto.targetGroups) ? result.parserDataResponceDto.targetGroups : [];
 
         if (result && result.parserDataResponceDto) {
-            const { profileImageUrl, profileNickName, isParsingStarted, parserId, parserPassword, userGroupsList, remainingParsingTimeHoursMinutes, totalParsingTime } = result.parserDataResponceDto;
+            const { profileImageUrl, profileNickName, isParsingStarted, parserId, parserPassword, userGroupsList, targetGroups, remainingParsingTimeHoursMinutes, totalParsingTime } = result.parserDataResponceDto;
             window.userGroupsList = userGroupsList ?? [];
+            window.targetGroups = targetGroups ?? [];
 
             const userImages = document.querySelectorAll(".UserImage");
             userImages.forEach(img => {
@@ -225,21 +222,30 @@ function openModal(type) {
     currentModal = type;
 
     if (type === 'groups' && isMobile) {
+       
         const sheet = document.getElementById('bottomSheet');
         const sheetLabel = document.getElementById('sheetLabel');
         const sheetContent = document.getElementById('sheetContent');
 
-        sheetLabel.textContent = "Выберите группы";
-        sheetContent.innerHTML = '';
+        if(window.targetGroups.length < 1){
+            sheetLabel.textContent = "Выберите группы";
+        } 
+        else{
+            sheetLabel.textContent = "Выбрано групп: " + window.targetGroups.length;
+        }
 
         (window.userGroupsList ?? []).forEach(group => {
+         
             const div = document.createElement('div');
             div.textContent = group;
             div.classList.add('sheet-item');
+            if(window.targetGroups.includes(group)){
+               div.classList.add('selected');
+            }
             div.onclick = () => div.classList.toggle('selected');
             sheetContent.appendChild(div);
         });
-
+        
         const saveBtn = document.getElementById('sheetSaveButton');
         sheet.classList.add('active');
         return; 
@@ -680,6 +686,8 @@ function addMessageToList(data) {
     const safeMessageText = escapeHtml(data.messageText);
     const safeName = escapeHtml(data.name);
     const safeMessageTime = escapeHtml(data.messageTime);
+    const localTime = new Date(safeMessageTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
     const safeProfileImageUrl = escapeUrl(data.profileImageUrl || 'https://via.placeholder.com/100');
     const safeUsername = escapeHtml(data.username);
 
@@ -698,7 +706,7 @@ function addMessageToList(data) {
 
     const messageTimeDiv = document.createElement('div');
     messageTimeDiv.className = 'MessageTime';
-    messageTimeDiv.textContent = safeMessageTime;
+    messageTimeDiv.textContent = localTime;
 
     const spamButton = document.createElement('button');
     spamButton.className = 'ThisIsSpamButton';

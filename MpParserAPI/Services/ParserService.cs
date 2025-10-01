@@ -527,7 +527,7 @@ public class ParserService : IParser
                 FirstName = x.TelegramUser.FirstName,
                 Username = x.TelegramUser.Username,
                 ProfileImageUrl = x.TelegramUser.ProfileImageUrl,
-                MessageTime = x.CreatedAt.ToLocalTime().ToString("HH:mm"),
+                MessageTime = x.CreatedAt.ToString("o"),
             })
             .ToListAsync();
 

@@ -164,7 +164,8 @@ namespace MpParserAPI.Services
                                             {
                                                 ParserId = parserId,
                                                 TelegramUserId = existingTelegramUser.TelegramUserId,
-                                                MessageText = normalizedMessage 
+                                                MessageText = normalizedMessage,
+                                                CreatedAt = DateTime.UtcNow
                                             };
 
                                             database.ParserLogsTable.Add(parserlog);
@@ -177,15 +178,16 @@ namespace MpParserAPI.Services
                                             }
 
                                             _logger.LogInformation("Подходим к завершению обработки сообщения {ParserId}", parserId);
-                                            //await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"🙍‍Пользователь: {existingTelegramUser.FirstName}\n\n💬Сообщение: {msg.message}\n\n👩‍👩‍👧‍👦Группа: {groupTitle}\n🔖Никнейм: @{user.username}", messageLink);
-                                            //_logger.LogInformation("отправили нотифай в бот {ParserId}", parserId);
+                                            await _notificationService.SendNotifyToBotAboutReceivedMessageAsync(parserId, $"🙍‍Пользователь: {existingTelegramUser.FirstName}\n\n💬Сообщение: {msg.message}\n\n👩‍👩‍👧‍👦Группа: {groupTitle}\n🔖Никнейм: @{user.username}", messageLink);
+                                            _logger.LogInformation("отправили нотифай в бот {ParserId}", parserId);
                                             await _parserHubContext.Clients.Group(parserId.ToString()).SendAsync("ReceiveMessage", new
                                             {
                                                 ProfileImageUrl = imageUrl,
                                                 Name = user.first_name,
                                                 Username = user.username,
                                                 MessageText = messageText,
-                                                MessageTime = parserlog.CreatedAt.ToLocalTime().ToString("HH:mm")
+                                                MessageTime = parserlog.CreatedAt.ToString("o"),
+                                                MessageLink = messageLink
                                             });
 
                                             _logger.LogInformation("""
