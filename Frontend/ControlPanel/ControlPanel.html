@@ -71,19 +71,21 @@
  </section>   
 </div>
 
-<div id="overlayModal" onclick="closeModal()"></div>
 <div id="tagifyModal">
+  <div class="sheet-header">
+    <div class="tagsImageAndLabel">
+      <img class="tagImage" src="Assets/Tags.png">
+      <label id="tagCount"></label>
+    </div>
+    <button class="closeButton" onclick="closeModal()">×</button>
+  </div>
   <div class="modalContent" onclick="event.stopPropagation();">
-    <button class="closeButton" onclick="closeModal()">&times;</button>
-    <label id="tagifyLabel"></label>
-   <div class="tagsImageAndLabel">
-     <img class="tagImage" src="Assets/Tags.png"/>
-     <label id="tagCount">Кол-во тегов: 0</label>
-   </div>
     <label id="labelForKeywords">Укажите файл с ключевыми словами, или введите их вручную</label>
-    <input type="file" id="InputKeywordsFile" accept=".txt"/>
+    <input type="file" id="InputKeywordsFile" accept=".txt" />
     <input id="tagifyInput" placeholder="" />
-    <button class="SaveTagsButton" onclick="saveTags()">Сохранить</button>
+    <div class="SaveTagsButtonHandler">
+      <button class="SaveTagsButton" onclick="saveTags()">Сохранить</button>
+    </div>
   </div>
 </div>
 

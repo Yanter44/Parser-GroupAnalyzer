@@ -271,7 +271,6 @@ function openModal(type) {
         labelForKeywordss.style.display = "block"; 
 
     }
-    label.textContent = type === 'keywords' ? "Ключевые слова" : "Группы";
 
     if (tagifyInstance) {
         try {
