@@ -219,13 +219,14 @@ function CopyParserIdAndPassword(){
 
 function openModal(type) {
 	 const isMobile = window.innerWidth <= 768;
-    currentModal = type;
+     currentModal = type;
 
     if (type === 'groups' && isMobile) {
        
         const sheet = document.getElementById('bottomSheet');
         const sheetLabel = document.getElementById('sheetLabel');
         const sheetContent = document.getElementById('sheetContent');
+        let selectedCount = window.targetGroups.length;
 
         if(window.targetGroups.length < 1){
             sheetLabel.textContent = "Выберите группы";
