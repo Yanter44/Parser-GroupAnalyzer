@@ -242,7 +242,22 @@ function openModal(type) {
             if(window.targetGroups.includes(group)){
                div.classList.add('selected');
             }
-            div.onclick = () => div.classList.toggle('selected');
+            div.onclick = () =>
+            {
+                div.classList.toggle('selected');
+                
+                if(div.classList.contains('selected')) {
+                    selectedCount++;
+                } else {
+                    selectedCount--; 
+                }
+
+                if(selectedCount < 1){
+                    sheetLabel.textContent = "Выберите группы";
+                } else {
+                    sheetLabel.textContent = "Выбрано групп: " + selectedCount;
+                }
+            };
             sheetContent.appendChild(div);
         });
         
@@ -258,7 +273,6 @@ function openModal(type) {
     document.getElementById("overlay").classList.add("active");
     document.getElementById("tagifyModal").classList.add("active");
 
-    const label = document.getElementById("tagifyLabel");
     const input = document.getElementById("tagifyInput");
     const fileinput = document.getElementById("InputKeywordsFile");
     const labelForKeywordss = document.getElementById("labelForKeywords");
