@@ -389,12 +389,19 @@ async function saveTags() {
 
         console.log(`groups:`, tags);
 
-        await fetch(`${config.API_BASE}/ParserConfig/AddGroupsToParser`, {
+         let response = await fetch(`${config.API_BASE}/ParserConfig/AddParserKeywords`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ groupNames: tags })
+            body: JSON.stringify(combinedTags)
         });
+        if (response.ok) {
+           const modal = document.getElementById("tagifyModal");
+           if (modal) {
+             closeModal();
+        } else {
+            console.warn("tagifyModal не найден в DOM");
+        }
 
         if (window.innerWidth <= 768) {
             document.getElementById('bottomSheet').classList.remove('active');

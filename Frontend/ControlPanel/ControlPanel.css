@@ -58,7 +58,7 @@ body {
     overflow: auto;
     overflow-x: hidden;
     font-family: Arial, sans-serif;
-    background: linear-gradient(to bottom, #000000 0%, #282c40 21%, #3e2c8c 84%, #432c92 100%);
+    background: linear-gradient(214deg, #262b31, #050506);
     background-attachment: fixed;
     color: var(--text-primary);
 }
@@ -115,6 +115,7 @@ body {
     padding: 10px 12px;
     margin-bottom: 8px;
     border-radius: 8px;
+    text-align: center;
     color: black;
     background-color: #f5f5f5;
     cursor: pointer;
@@ -184,7 +185,7 @@ body {
 }
 
 .AddTagButton:hover {
-  background-color: #4b4460;
+  background-color: #383347;
   border-color: #4b5563;
   transform: translateY(-1px);
 }
@@ -315,7 +316,8 @@ body {
   margin: 0 auto;
   display: block;
   padding: 12px 24px;
-  background: linear-gradient(135deg, var(--success), #218838);
+  width: 60%;
+  background: linear-gradient(341deg, #000000, #0f0f0f, #000000, #232323);
   border: none;
   border-radius: var(--border-radius);
   color: var(--text-primary);
@@ -324,17 +326,19 @@ body {
   cursor: pointer;
   box-shadow: var(--shadow-md);
   transition: var(--transition);
+  
 }
-
+.SaveTagsButtonHandler{
+  width:100%;
+}
 .modalContent .SaveTagsButton:hover {
-  background: linear-gradient(135deg, #218838, #1e7e34);
+  background: linear-gradient(341deg, #202020, #313131, #393939, #464646);
   transform: scale(1.05);
-  box-shadow: 0 6px 14px rgba(40, 167, 69, 0.4);
 }
 
 .modalContent .SaveTagsButton:active {
   transform: scale(0.98);
-  background: #1c7430;
+  background: #494949;
 }
 .file-input-wrapper {
     position: relative;
@@ -416,15 +420,17 @@ body {
 }
 
 .HeaderPanelContainer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: #19111d87;
-  padding: 10px 20px;
-  position: relative;
-  width: 100%;
-  min-width: 100%;
-  overflow-x: hidden;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    justify-content: space-between;
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 10px 20px;
+    position: relative;
+    width: 100%;
+    min-width: 100%;
+    overflow-x: hidden;
 }
 
 .HeaderLeft,
@@ -439,7 +445,7 @@ body {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: auto; /* Убираем фиксированную ширину для гибкости */
+  width: auto; 
   text-align: center;
 }
 
@@ -539,7 +545,7 @@ body {
   padding: var(--padding-base);
   color: var(--text-primary);
   border: none;
-  border-radius: 12px;
+  border-radius: 15px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -551,7 +557,7 @@ body {
 }
 
 .StartParserButton {
-  background-color: #40a944;
+  background-color: #33b46a;
   width: 100%;
 }
 
@@ -581,7 +587,6 @@ body {
   border-radius: var(--border-radius);
   padding: 10px;
   margin: 0 1% 0 1%;
-  background-color: rgba(199, 208, 255, 0.2);
   text-align: center;
   min-height: 0;
   max-width: 98%; 
@@ -594,20 +599,21 @@ body {
 }
 
 .DataList li {
-  display: flex;
-  align-items: center;
-  padding: 12px 10px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid #eee;
-  border-radius: 10px;
-  background-color: #1B1A2B;
-  text-align: center;
-  justify-content: space-between;
-  border-color: var(--bg-secondary);
-  word-wrap: break-word;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  animation: slidein 0.3s;
-  max-width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 12px 10px;
+    background: linear-gradient(114deg, rgb(229 116 211 / 9%) 0%, rgb(0 0 0 / 36%) 100%);
+    backdrop-filter: blur(20px);
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    border-radius: 10px;
+    text-align: center;
+    justify-content: space-between;
+    border-color: var(--bg-secondary);
+    word-wrap: break-word;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: slidein 0.3s;
+    max-width: 100%;
 }
 
 .DataList li:hover {
@@ -655,7 +661,7 @@ body {
 }
 
 .ThisIsSpamButton {
-  background-color: #AB3B3B;
+  background: linear-gradient(104deg, #E2574C 0%, #6e3333 100%);
   margin-right: 5px;
 }
 
@@ -968,8 +974,8 @@ body {
   .sheet-save-button{
     width: 100%;
     border-radius: 15px;
-    font-size: 22px;
-    padding: 19px;
+    font-size: 19px;
+    padding: 15px;
     border: none;
     background: linear-gradient(80deg, #000000, #232323, #000000, #232323);
     background-size: 400% 400%;
@@ -989,9 +995,9 @@ body {
 
   .sheetSaveButtonHandler{
     position: absolute;
-    top: 90%;
+    top: 88%;
     left: 50%;
-    width: 80%;
+    width: 70%;
     transform: translateX(-50%);
     z-index: 1000;
   }

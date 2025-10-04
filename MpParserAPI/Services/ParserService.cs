@@ -368,7 +368,7 @@ public class ParserService : IParser
             SubscriptionType = parserState.SubscriptionType,
             SubscriptionEndDate = parserState.SubscriptionEndDate,
         };
-
+        _parserStorage.AddOrUpdateParser(parserData.Id, parserData);
         parserData.Client = new Client(key =>
         {
             if (key == "session_pathname")
@@ -407,6 +407,7 @@ public class ParserService : IParser
             {
                 parserData.AuthState = TelegramAuthState.Authorized;
                 _logger.LogInformation("Парсер {ParserId} авторизован", parserState.ParserId);
+
             }
             else if (loginResult == "verification_code")
             {
