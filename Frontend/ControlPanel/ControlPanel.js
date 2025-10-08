@@ -49,7 +49,11 @@ async function InitializePage() {
             method: 'GET',
             credentials: 'include'
         });
-
+        
+       if (!response.ok) {
+           window.location.href = `${config.DefaultStartFileLocation}/index.html`;
+           return;
+        }
         const result = await response.json();
         console.log(result);
 
@@ -104,7 +108,6 @@ async function InitializePage() {
                 telegramButton.dataset.username = element.username;
                 telegramButton.textContent = 'Чат';
 
-                // Собираем элементы
                 item.appendChild(img);
                 item.appendChild(nicknameDiv);
                 item.appendChild(messageTextDiv);
@@ -114,24 +117,22 @@ async function InitializePage() {
  
                 container.prepend(item);
 
-                // Обработчик для перехода в Telegram
                 telegramButton.addEventListener('click', () => {
                     const username = telegramButton.dataset.username;
                     if (username) {
                         window.open(`https://t.me/${username}`, '_blank');
                     } else {
-                        alert('Telegram username не найден');
+                        showError('Telegram username не найден');
                     }
                 });
             });
         }
 
-        // Обработка данных для интерфейса
         savedTags.keywords = Array.isArray(result.parserDataResponceDto.parserkeywords) ? result.parserDataResponceDto.parserkeywords : [];
         savedTags.groups = Array.isArray(result.parserDataResponceDto.targetGroups) ? result.parserDataResponceDto.targetGroups : [];
 
         if (result && result.parserDataResponceDto) {
-            const { profileImageUrl, profileNickName, isParsingStarted, parserId, parserPassword, userGroupsList, targetGroups, remainingParsingTimeHoursMinutes, totalParsingTime } = result.parserDataResponceDto;
+            const { profileImageUrl, profileNickName, isParsingStarted, parserId, parserPassword, parserSubscriptionType, userGroupsList, targetGroups, remainingParsingTimeHoursMinutes, totalParsingTime } = result.parserDataResponceDto;
             window.userGroupsList = userGroupsList ?? [];
             window.targetGroups = targetGroups ?? [];
 
@@ -146,6 +147,9 @@ async function InitializePage() {
             const parserIdElement = document.querySelector(".ParserIdValueText");
             const parserPasswordElement = document.querySelector(".PasswordValueText");
             const totalparsingTimeElement = document.getElementsByClassName("TotalParsingTimeValueText")[0];
+            const subscriptionTypeElement = document.querySelector(".SubscriptionTypeText");
+
+            subscriptionTypeElement.textContent = parserSubscriptionType;
 
             if (parserIdElement) {
                 parserIdElement.textContent = parserId;
@@ -202,7 +206,8 @@ async function InitializePage() {
             }
         }
     } catch (error) {
-        console.error('Ошибка при инициализации интерфейса:', error);
+        console.log(error);
+        showError('Произошла ошибка при инициализации интерфейса');
     } finally {
         document.getElementById("preloader").style.display = "none";
         document.getElementById("mainContent").style.display = "block";
@@ -218,8 +223,8 @@ function CopyParserIdAndPassword(){
 }
 
 function openModal(type) {
-	 const isMobile = window.innerWidth <= 768;
-     currentModal = type;
+    const isMobile = window.innerWidth <= 768;
+    currentModal = type;
 
     if (type === 'groups' && isMobile) {
        
@@ -228,11 +233,11 @@ function openModal(type) {
         const sheetContent = document.getElementById('sheetContent');
         let selectedCount = window.targetGroups.length;
 
-        if(window.targetGroups.length < 1){
+        if(selectedCount  < 1){
             sheetLabel.textContent = "Выберите группы";
         } 
         else{
-            sheetLabel.textContent = "Выбрано групп: " + window.targetGroups.length;
+            sheetLabel.textContent = "Выбрано групп: " + selectedCount;
         }
 
         (window.userGroupsList ?? []).forEach(group => {
@@ -266,15 +271,18 @@ function openModal(type) {
         sheet.classList.add('active');
         return; 
     }
-	
-     if (window.Telegram && window.Telegram.WebApp) {
+
+
+    if (window.Telegram && window.Telegram.WebApp) {
         window.Telegram.WebApp.disableVerticalSwipes();
         window.Telegram.WebApp.expand();
     }
+ 
     document.getElementById("overlay").classList.add("active");
     document.getElementById("tagifyModal").classList.add("active");
 
     const input = document.getElementById("tagifyInput");
+    const tagslabel = document.getElementById("tagCount");
     const fileinput = document.getElementById("InputKeywordsFile");
     const labelForKeywordss = document.getElementById("labelForKeywords");
 
@@ -284,9 +292,9 @@ function openModal(type) {
     } else {
         fileinput.style.display = "block"; 
         labelForKeywordss.style.display = "block"; 
-
     }
 
+    tagslabel.textContent = `Кол-во тегов: ${savedTags.keywords.length}`;
     if (tagifyInstance) {
         try {
             tagifyInstance.destroy();
@@ -294,7 +302,7 @@ function openModal(type) {
         tagifyInstance = null;
     }
     input.value = "";
-
+    
     tagifyInstance = new Tagify(input, {
         whitelist: type === 'groups' ? window.userGroupsList ?? [] : [],
         enforceWhitelist: type === 'groups',
@@ -307,7 +315,6 @@ function openModal(type) {
         }
     });
 
-
     tagifyInstance.on('change', e => {
         const tags = tagifyInstance.value;
         console.log("Текущие теги:", tags.map(t => t.value));
@@ -319,10 +326,9 @@ function openModal(type) {
         }
         updateTagCounts(tags.length);
     });
-  
+
     tagifyInstance.addTags(savedTags[type]);
 }
-
 
 function closeModal() {
     document.getElementById("overlay").classList.remove("active");
@@ -334,7 +340,6 @@ function closeModal() {
     tagifyInstance = null;
 }
 
-//Теги
 function updateTagCounts(tagsLenght) {
   const tagslabel = document.getElementById("tagCount");
   tagslabel.textContent = `Кол-во тегов: ${tagsLenght}`
@@ -369,12 +374,32 @@ async function saveTags() {
         savedTags[currentModal] = combinedTags;
         console.log(`keywords:`, combinedTags);
 
-        await fetch(`${config.API_BASE}/ParserConfig/AddParserKeywords`, {
+        let response = await fetch(`${config.API_BASE}/ParserConfig/AddParserKeywords`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(combinedTags)
         });
+        let result;
+        try {
+            result = await response.json(); 
+        } catch (err) {
+            console.error("Ошибка разбора JSON:", err);
+            result = { success: false, message: "Ошибка при получении ответа от сервера" };
+        }
+
+        if (response.ok && result.success) {
+            console.log("✅", result.message);
+            const modal = document.getElementById("tagifyModal");
+            if (modal) {
+                closeModal();
+            } else {
+                console.warn("tagifyModal не найден в DOM");
+            }
+        } else {
+            console.error(result.message);
+            showError(result.message);
+        }
 
     } else if (currentModal === 'groups') {
         let tags = [];
@@ -389,25 +414,30 @@ async function saveTags() {
 
         console.log(`groups:`, tags);
 
-         let response = await fetch(`${config.API_BASE}/ParserConfig/AddParserKeywords`, {
+        var response = await fetch(`${config.API_BASE}/ParserConfig/AddGroupsToParser`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(combinedTags)
+            body: JSON.stringify({ groupNames: tags })
         });
-        if (response.ok) {
-           const modal = document.getElementById("tagifyModal");
-           if (modal) {
-             closeModal();
-        } else {
-            console.warn("tagifyModal не найден в DOM");
+        let result;
+        try {
+            result = await response.json(); 
+        } catch (err) {
+            console.error("Ошибка разбора JSON:", err);
+            result = { success: false, message: "Ошибка при получении ответа от сервера" };
         }
 
-        if (window.innerWidth <= 768) {
-            document.getElementById('bottomSheet').classList.remove('active');
+        if (response.ok && result.success) {
+            if (window.innerWidth <= 768) {
+                      document.getElementById('bottomSheet').classList.remove('active');
+            } else { closeModal(); }
         } else {
-            closeModal();
+            console.error(result.message);
+            showError(result.message);
         }
+        
+       
     }
 }
 
@@ -711,7 +741,7 @@ function addMessageToList(data) {
 
     const safeProfileImageUrl = escapeUrl(data.profileImageUrl || 'https://via.placeholder.com/100');
     const safeUsername = escapeHtml(data.username);
-
+    
     const img = document.createElement('img');
     img.src = safeProfileImageUrl;
     img.alt = 'User Image';
@@ -753,7 +783,7 @@ function addMessageToList(data) {
         if (username) {
             window.open(`https://t.me/${username}`, '_blank');
         } else {
-            alert('Telegram username не найден');
+            showError('Telegram username не найден');
         }
     });
 }
@@ -779,7 +809,7 @@ async function ThisIsASpam(spamMessage) {
         await RemoveAllSpamMessages(spamMessage);
     } catch (error) {
         console.error('Error:', error);
-        alert('Ошибка при добавлении в спам');
+        showError('Произошла ошибка при добавлении в спам');
     }
 }
 
@@ -849,3 +879,28 @@ function escapeUrl(url) {
         return 'https://via.placeholder.com/100';
     }
 }
+const showError = (msg) => {
+  const errorPopup = document.getElementById("ErrorPopup");
+  const closeBtn = document.getElementById("ErrorCloseBtn");
+
+  if (!errorPopup) return alert(msg);
+
+  errorPopup.querySelector(".ErrorMessage").textContent = msg;
+
+  errorPopup.classList.remove("hidden");
+  errorPopup.classList.add("show");
+
+  const timeoutId = setTimeout(() => {
+    hideError();
+  }, 5000);
+
+  const hideError = () => {
+    errorPopup.classList.remove("show");
+    setTimeout(() => {
+      errorPopup.classList.add("hidden");
+    }, 400); 
+    clearTimeout(timeoutId);
+  };
+  closeBtn.onclick = hideError;
+};
+

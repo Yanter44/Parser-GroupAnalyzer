@@ -6,122 +6,227 @@
     <title>ClientCrawl - Сервис для поиска клиентов в Telegram</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bungee+Inline&family=Manrope:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bungee+Inline&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="LandingMain.css">
 </head>
 <body>
     <header class="header">
         <div class="header-content">
             <div class="logo">CLIENTCRAWL</div>
-            <nav class="nav">
-                <a href="#how-it-works" class="nav-link">Как это работает?</a>
-                <a href="#tariffs" class="nav-link tariff-link">Тарифы</a>
-                <a href="#about-us" class="nav-link about-link">О нас</a>
+            <div class="burger-menu" id="burgerMenu">
+                <span class="burger-line"></span>
+                <span class="burger-line"></span>
+                <span class="burger-line"></span>
+            </div>
+            <nav class="nav" id="navMenu">
+                <a class="nav-link" onclick="scrollToElement('HowItWorksSectionId')">Как это работает?</a>
+                <a class="nav-link tariff-link" onclick="scrollToElement('TariffsSectionId')">Тарифы</a>
+                <a class="nav-link about-link" onclick="scrollToElement('AboutSectionId')">О нас</a>
+                <div class="mobile-login">
+                    <a class="login-button" onclick="window.location.href='https://clientcrawl.online/Parser/'">Войти</a>
+                </div>
             </nav>
             <div class="login-container">
-                <a href="#login" class="login-button">Войти</a>
+                <a class="login-button" onclick="window.location.href='https://clientcrawl.online/Parser/'">Войти</a>
             </div>
         </div>
     </header>
     <main>
-        <section class="hero">
-            <div class="hero-content">
-                <div class="hero-title">
-                    <img src="Assets/image 10.png" alt="Telegram Logo" class="telegram-logo">
-                    Сервис для поиска клиентов в Telegram
+        <section class="StartPage">
+            <div class="StartPageDiv">
+                <img src="Assets/telegramimage.png" class="StartPageDivImage" alt="telegram-app"/>
+                <div class="text-content">
+                    <span class="StartPageDivSpan">Сервис для поиска клиентов и анализа аудитории Telegram</span>
+                    <button class="StartPageDivButton" onclick="scrollToElement('TariffsSectionId')">Попробовать</button>
                 </div>
-                <a href="#tariffs" class="try-button">Попробовать</a>
-                <p class="hero-text">Подходит для любого бизнеса и задач</p>
-            </div>
+            </div>           
         </section>
-        <section class="features">
-            <div class="feature-block">
-                <img src="Assets/image 12.png" alt="Поиск клиентов" class="feature-img">
-                <p>Поиск клиентов</p>
-            </div>
-            <div class="feature-block">
-                <img src="Assets/image 13.png" alt="Поиск работы" class="feature-img">
-                <p>Поиск работы</p>
-            </div>
-            <div class="feature-block">
-                <img src="Assets/image 14.png" alt="Анализ конкурентов и аудитории" class="feature-img">
-                <p>Анализ конкурентов и аудитории</p>
-            </div>
-            <div class="feature-block">
-                <img src="Assets/image 19.png" alt="Автоматизация процессов" class="feature-img">
-                <p>Автоматизация процессов</p>
-            </div>
-            <div class="feature-block">
-                <img src="Assets/image 15.png" alt="Экономия времени и бюджета" class="feature-img">
-                <p>Экономия времени и бюджета</p>
-            </div>
-            <div class="feature-block">
-                <img src="Assets/dollar.png" alt="Отслеживание любых каналов и чатов" class="feature-img">
-                <p>Отслеживание любых каналов и чатов</p>
-            </div>
-        </section>
-        <a href="#tariffs" class="cta-button">Удобный поиск любой информации в Telegram</a>
 
-        <section id="how-it-works" class="how-it-works">
+        <section class="AboutSection" id="AboutSectionId">
+          <div class="section-title">
+            <span>О нас</span>
+        </div>
+            <div class="AboutText">
+                <span>
+                    ClientCrawl - инновационный сервис для поиска клиентов в Telegram. Мы помогаем бизнесам находить потенциальных клиентов эффективно и быстро.
+                    Представь, что ты можешь мгновенно узнать, когда кто-то пишет то, что тебе важно.<br><br>
+                    <b>ClientCrawl</b> собирает сообщения из Telegram-групп, фильтрует их по твоим ключевым словам 
+                    и присылает прямо тебе — в десктопное приложение, мобильное мини-приложение или бот-нотификатор.<br><br>
+                    Никакого лишнего шума — только нужная информация.<br>
+                    Настрой один раз — и система работает за тебя.<br>
+                    Всё прямо в Telegram, без сложных настроек.
+                </span>
+            </div>
+        </section>
+        
+        <section class="WhyWeNeededSection">
+            <div class="section-title">
+                <span>Почему нас выбирают?</span>
+            </div>
+            
+            <div class="WhyWeNeededCards">
+                <div class="WhyWeNeededCard">
+                    <img src="Assets/image 12.png" alt="Поиск клиентов">
+                    <span>Поиск клиентов</span>
+                </div>
+                <div class="WhyWeNeededCard">
+                    <img src="Assets/image 13.png" alt="Поиск работы">
+                    <span>Поиск работы</span>
+                </div>
+                <div class="WhyWeNeededCard">
+                    <img src="Assets/image 14.png" alt="Анализ аудитории и конкурентов">
+                    <span>Анализ аудитории и конкурентов</span>
+                </div>
+                <div class="WhyWeNeededCard">
+                    <img src="Assets/image 19.png" alt="Автоматизация процессов">
+                    <span>Автоматизация процессов</span>
+                </div>
+                <div class="WhyWeNeededCard">
+                    <img src="Assets/image 15.png" alt="Экономия времени и бюджетов">
+                    <span>Экономия времени и бюджетов</span>
+                </div>
+                <div class="WhyWeNeededCard">
+                    <img src="Assets/dollar.png" alt="Отслеживание любых каналов и чатов">
+                    <span>Отслеживание любых каналов и чатов</span>
+                </div>
+            </div>
+            
+            <div class="carousel-container">
+                <button class="carousel-arrow prev">‹</button>
+                <div class="carousel-track">
+                    <div class="carousel-slide">
+                        <img src="Assets/image 12.png" alt="Поиск клиентов">
+                        <span>Поиск клиентов</span>
+                    </div>
+                    <div class="carousel-slide">
+                        <img src="Assets/image 13.png" alt="Поиск работы">
+                        <span>Поиск работы</span>
+                    </div>
+                    <div class="carousel-slide">
+                        <img src="Assets/image 14.png" alt="Анализ аудитории и конкурентов">
+                        <span>Анализ аудитории и конкурентов</span>
+                    </div>
+                    <div class="carousel-slide">
+                        <img src="Assets/image 19.png" alt="Автоматизация процессов">
+                        <span>Автоматизация процессов</span>
+                    </div>
+                    <div class="carousel-slide">
+                        <img src="Assets/image 15.png" alt="Экономия времени и бюджетов">
+                        <span>Экономия времени и бюджетов</span>
+                    </div>
+                    <div class="carousel-slide">
+                        <img src="Assets/dollar.png" alt="Отслеживание любых каналов и чатов">
+                        <span>Отслеживание любых каналов и чатов</span>
+                    </div>
+                </div>
+                <button class="carousel-arrow next">›</button>
+                <div class="carousel-nav">
+                    <button class="carousel-dot active" data-slide="0"></button>
+                    <button class="carousel-dot" data-slide="1"></button>
+                    <button class="carousel-dot" data-slide="2"></button>
+                    <button class="carousel-dot" data-slide="3"></button>
+                    <button class="carousel-dot" data-slide="4"></button>
+                    <button class="carousel-dot" data-slide="5"></button>
+                </div>
+            </div>
+        </section>
+    
+       <section class="HowItWorksSection" id="HowItWorksSectionId"> 
             <h2>Как это работает?</h2>
             <div class="steps">
                 <div class="step">
-                    <img src="Assets/image 11.png" alt="Авторизируешься в Telegram" class="step-img">
-                    <p>1. Авторизируешься в Telegram</p>
+                     <img src="Assets/image 10.png" class="step-img" alt="Авторизация">
+                     <p>1. Авторизируешься в Telegram</p>
                 </div>
-                <div class="arrow"><img src="Assets/arrow.png" alt="Стрелка вправо" class="full-size"></div>
+                <img src="Assets/strelka.png" class="step-arrow" alt="Стрелка">
                 <div class="step">
-                    <img src="Assets/image 16.png" alt="Добавляешь группы и ключевые слова" class="step-img">
-                    <p>2. Добавляешь группы и ключевые слова</p>
+                     <img src="Assets/image 16.png" class="step-img" alt="Добавление групп">
+                     <p>2. Добавляешь группы и ключевые слова</p>
                 </div>
-                <div class="arrow"><img src="Assets/arrow.png" alt="Стрелка вправо" class="full-size"></div>
+                <img src="Assets/strelka.png" class="step-arrow" alt="Стрелка">
                 <div class="step">
-                    <img src="Assets/image 17.png" alt="Получаем сообщения" class="step-img">
-                    <p>3. Получаем сообщения от потенциальных клиентов в реальном времени</p>
+                     <img src="Assets/image 17.png" class="step-img" alt="Отслеживание сообщений">
+                     <p>3. Отлавливаешь сообщения</p>
                 </div>
             </div>
         </section>
-        <section id="tariffs" class="tariffs">
-            <h2>Тарифы</h2>
-            <div class="tariff-blocks">
-                <div class="tariff-block">
-                    <h3>Базовый</h3>
-                    <ul>
-                        <li>Поиск в 5 группах</li>
-                        <li>До 10 ключевых слов</li>
-                        <li>Базовая аналитика</li>
-                    </ul>
-                    <a href="#payment" class="price-button">500 руб/мес</a>
-                </div>
-                <div class="tariff-block">
-                    <h3>Про</h3>
-                    <ul>
-                        <li>Поиск в 20 группах</li>
-                        <li>До 50 ключевых слов</li>
-                        <li>Расширенная аналитика</li>
-                        <li>Автоматизация</li>
-                    </ul>
-                    <a href="#payment" class="price-button">1500 руб/мес</a>
-                </div>
-                <div class="tariff-block">
-                    <h3>Предприятие</h3>
-                    <ul>
-                        <li>Неограниченные группы</li>
-                        <li>Неограниченные <br> ключевые слова</li>
-                        <li>Полная аналитика</li>
-                        <li>Приоритетная поддержка</li>
-                    </ul>
-                    <a href="#payment" class="price-button">5000 руб/мес</a>
-                </div>
-            </div>
-        </section>
-        <a href="#tariffs" class="start-button">Начать поиск клиентов</a>
 
-        <section id="about-us" class="about-us">
-            <h2>О нас</h2>
-            <p>ClientCrawl - инновационный сервис для поиска клиентов в Telegram. Мы помогаем бизнесам находить потенциальных клиентов эффективно и быстро.</p>
-        </section>
+       <section class="TariffsSection" id="TariffsSectionId"> 
+          <h2>Тарифы</h2> 
+           <div class="TariffCards">
+              <div class="TariffCard"> 
+                <h3>Тестовый</h3>
+                 <ul> 
+                      <li>Поиск в 5 группах</li>
+                      <li>До 10 ключевых слов</li>
+                      <li>30 минут парсинга</li>
+                 </ul>
+                  <a href="#payment" class="price-button">Бесплатно</a>
+               </div>
+                <div class="TariffCard">
+                     <h3>Базовый</h3>
+                     <ul>
+                         <li>Поиск в 50 группах</li>
+                         <li>До 50 ключевых слов</li>
+                         <li>Парсинг 24ч в сутки</li>
+                     </ul>
+                      <a href="#payment" class="price-button">1200 руб/мес</a>
+                </div>
+                <div class="TariffCard">
+                     <h3>Продвинутый</h3> 
+                     <ul>
+                         <li>До 150 групп</li> 
+                         <li>До 150 ключевых слов </li> 
+                         <li>Неограниченное время парсинга</li> 
+                      </ul>
+                       <a href="#payment" class="price-button">3000 руб/мес</a> 
+                 </div> 
+            </div>
+         </section>
+         
+     <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <div class="footer-logo">CLIENTCRAWL</div>
+                <p class="footer-description">
+                    Инновационный сервис для поиска клиентов и анализа аудитории Telegram. 
+                    Находите потенциальных клиентов эффективно и быстро.
+                </p>
+            </div>
+        
+            <div class="footer-column">
+                <h3>Поддержка</h3>
+                <ul class="footer-links">
+                    <li><a href="#">Помощь</a></li>
+                    <li><a href="#">Контакты</a></li>
+                    <li><a href="#">Сообщить о проблеме</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-column">
+                <h3>Контакты</h3>
+                <div class="footer-contact">
+                    <i>📧</i> support@clientcrawl.ru
+                </div>
+                <div class="footer-contact">
+                    <i>📞</i> +7 (999) 999-99-99
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <div class="copyright">
+                © 2025 ClientCrawl. 
+            </div>
+            <div class="footer-bottom-links">
+                <a href="#">Политика конфиденциальности</a>
+                <a href="#">Условия использования</a>
+                <a href="#">Cookie</a>
+            </div>
+        </div>
+    </footer>
     </main>
-    <script src="LandingMain.js"></script>
+
+    <script src="LandingMain.js"> </script>
 </body>
 </html>

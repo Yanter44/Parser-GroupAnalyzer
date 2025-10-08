@@ -21,7 +21,18 @@
   --padding-base: 8px 12px;
   --gap-base: 15px;
   --margin-top-sm: 0.5rem;
+    --bg-top: #0d0f24;
+  --bg-mid: #141133;
+  --bg-bottom: #10386d;
+  --purple-glow: #2b0d56;
+  --accent-a: #2fb8ff;
+  --accent-b: #1166ff;
+  --muted: #c9d3ff;
+  --glass: rgba(255,255,255,0.035);
+  --card: rgba(255,255,255,0.03);
+  --card-border: rgba(255,255,255,0.04);
 }
+
 
 *,
 *::before,
@@ -58,7 +69,7 @@ body {
     overflow: auto;
     overflow-x: hidden;
     font-family: Arial, sans-serif;
-    background: linear-gradient(214deg, #262b31, #050506);
+    background: radial-gradient(600px 400px at 8% 86%, var(--purple-glow) 0%, transparent 30%), linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 40%, var(--bg-bottom) 100%);
     background-attachment: fixed;
     color: var(--text-primary);
 }
@@ -143,7 +154,7 @@ body {
 #preloader {
   position: fixed;
   inset: 0;
-  background: linear-gradient(to bottom, #000000, #1b183a);
+  background: radial-gradient(600px 400px at 8% 86%, var(--purple-glow) 0%, transparent 30%), linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 40%, var(--bg-bottom) 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -201,7 +212,53 @@ body {
   width: 16px;
 }
 
+.ErrorPopup {
+  position: fixed;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #ff4c4c;
+  color: #fff;
+  padding: 1rem 2.5rem 1rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  font-size: 1rem;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease-in-out, top 0.4s ease-in-out;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 260px;
+  justify-content: space-between;
+}
 
+.ErrorPopup.show {
+  opacity: 1;
+  pointer-events: auto;
+  top: 30px;
+}
+
+.ErrorCloseBtn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.4rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.ErrorCloseBtn:hover {
+  color: #ffdcdc;
+  transform: scale(1.1);
+}
+
+.hidden {
+  display: none;
+}
 
 
 
@@ -800,19 +857,12 @@ body {
     position: relative;
 }
 
-.ParserIdContainer, .PasswordParserContainer, .TotalParsingTimeContainer {
+.ParserIdContainer, .PasswordParserContainer, .TotalParsingTimeContainer, .SubscriptionTypeContainer {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    padding: 15px;
-     background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.15) 0%,
-        rgba(255, 255, 255, 0.05) 30%,
-        rgba(255, 255, 255, 0.1) 70%,
-        rgba(255, 255, 255, 0.15) 100%
-    );
+    padding: 5px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 30%, rgba(255, 255, 255, 0.1) 70%, rgba(255, 255, 255, 0.15) 100%);
     border-radius: 10px;
     backdrop-filter: blur(10px);
     text-align: center;
@@ -842,7 +892,8 @@ body {
 
 .ParserHeaderContainerContainer,
 .PasswordHeaderContainerContainer,
-.TotalParsingTimeContainerContainer {
+.TotalParsingTimeContainerContainer,
+.SubscriptionTypeContainerContainer {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -851,7 +902,9 @@ body {
 
 .ParserHeaderContainerContainer img,
 .PasswordHeaderContainerContainer img,
-.TotalParsingTimeContainerContainer img {
+.TotalParsingTimeContainerContainer img,
+.SubscriptionTypeContainerContainer img
+{
   width: 30px;
   margin-bottom: 10px;
 }
@@ -1196,6 +1249,11 @@ body {
 #tagifyModal.active {
   display: block;
   opacity: 1;
+  animation: slowlyshow 0.3s ease-in-out;
+}
+@keyframes slowlyshow {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
   .ParserButtonHandler {
     display: flex;

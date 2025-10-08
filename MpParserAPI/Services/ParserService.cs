@@ -234,7 +234,16 @@ public class ParserService : IParser
 
             return OperationResult<object>.Ok("Группы очищены.");
         }
-
+        int maxGroupsCount = parser.SubscriptionType switch
+        {
+            SubscriptionType.Test => 5,
+            SubscriptionType.Default => 50,
+            SubscriptionType.Premium => 150
+        };
+        if (groupNames.Count() > maxGroupsCount)
+            return OperationResult<object>.Fail(
+              $"Ваш тип подписки не позволяет установить более {maxGroupsCount} групп.");
+        
         var client = parser.Client;
         var dialogs = await client.Messages_GetAllDialogs();
         var newGroups = new List<InputPeer>();
@@ -300,34 +309,48 @@ public class ParserService : IParser
         return OperationResult<object>.Ok("Группы успешно установлены.");
     }
 
-    public async Task<OperationResult<object>> SetKeywords(Guid parserId, List<string> keywordss)
+    public async Task<OperationResult<object>> SetKeywords(Guid parserId, List<string> keywordsList)
     {
         if (!_parserStorage.ContainsParser(parserId))
             return OperationResult<object>.Fail($"Парсер с Id {parserId} не найден.");
 
         _parserStorage.TryGetParser(parserId, out var parser);
 
-        if (keywordss == null || !keywordss.Any())
+        if (keywordsList == null || !keywordsList.Any())
         {
             parser.Keywords = Array.Empty<string>();
             return OperationResult<object>.Ok("Ключевые слова очищены.");
         }
 
-        var keywords = keywordss
+        var keywords = keywordsList
                         .Select(k => k.Trim().ToLower())
                         .Where(k => !string.IsNullOrWhiteSpace(k))
                         .ToArray();
 
-        parser.Keywords = keywords;
-        using var database = await _dbContextFactory.CreateDbContextAsync();
-        var existparser = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
-        if(existparser != null)
+        int maxKeywords = parser.SubscriptionType switch
         {
-            existparser.Keywords = keywords;
-        }
+            SubscriptionType.Test => 10,
+            SubscriptionType.Default => 50,
+            SubscriptionType.Premium => 150
+        };
+
+        if (keywords.Length > maxKeywords)
+            return OperationResult<object>.Fail(
+                $"Ваш тип подписки не позволяет установить более {maxKeywords} слов."
+            );
+
+        parser.Keywords = keywords;
+
+        using var database = await _dbContextFactory.CreateDbContextAsync();
+        var existParser = await database.ParsersStates.FirstOrDefaultAsync(x => x.ParserId == parserId);
+        if (existParser != null)
+            existParser.Keywords = keywords;
+
         await database.SaveChangesAsync();
+
         return OperationResult<object>.Ok("Ключевые слова успешно установлены.");
     }
+
 
     public async Task<bool> IsParserAuthValid(Guid parserId, string password)
     {
@@ -339,14 +362,7 @@ public class ParserService : IParser
         }
         return false;
     }
-    private string GetSessionPath(string phone, bool isTemp)
-    {
-        var cleanedPhone = new string(phone.Where(char.IsDigit).ToArray());
-        var sessionsFolder = Path.Combine(AppContext.BaseDirectory, "sessions");
-        if (!Directory.Exists(sessionsFolder))
-            Directory.CreateDirectory(sessionsFolder);
-        return Path.Combine(sessionsFolder, $"{(isTemp ? "temp_session" : "session")}_{cleanedPhone}.session");
-    }
+
     public async Task<ParserData> TryGetParserFromDb(Guid parserId)
     {
         await using var database = await _dbContextFactory.CreateDbContextAsync();
@@ -407,7 +423,6 @@ public class ParserService : IParser
             {
                 parserData.AuthState = TelegramAuthState.Authorized;
                 _logger.LogInformation("Парсер {ParserId} авторизован", parserState.ParserId);
-
             }
             else if (loginResult == "verification_code")
             {
@@ -550,8 +565,8 @@ public class ParserService : IParser
                 ParserPassword = parser.Password,
                 UserGroupsList = usergroupsList,
                 RemainingParsingTimeHoursMinutes = formattedAvailableParsingTime,
-                TotalParsingTime = formattedTotalParsingTime
-               
+                TotalParsingTime = formattedTotalParsingTime,
+                ParserSubscriptionType = parser.SubscriptionType.ToString()
 
             },
             parserLogs = parserLogsRaw
@@ -712,7 +727,14 @@ public class ParserService : IParser
             return OperationResult<object>.Fail("Произошла ошибка при добавлении сообщения в черный список");
         }
     }
-
+    private string GetSessionPath(string phone, bool isTemp)
+    {
+        var cleanedPhone = new string(phone.Where(char.IsDigit).ToArray());
+        var sessionsFolder = Path.Combine(AppContext.BaseDirectory, "sessions");
+        if (!Directory.Exists(sessionsFolder))
+            Directory.CreateDirectory(sessionsFolder);
+        return Path.Combine(sessionsFolder, $"{(isTemp ? "temp_session" : "session")}_{cleanedPhone}.session");
+    }
 
 
 

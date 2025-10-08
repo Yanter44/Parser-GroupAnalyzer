@@ -16,7 +16,6 @@ namespace MpParserAPI.Services
         private readonly IParserDataStorage _parserDataStorage;
         private readonly ILogger<SpaceProxyService> _logger;
         private readonly IHubContext<ParserHub> _parserHubContext;
-        private readonly INotify _notificationService;
         private readonly IDbContextFactory<ParserDbContext> _dbContextFactory;
         private ConcurrentDictionary<string, Guid> ProxyServersAndParsersIds = new ConcurrentDictionary<string, Guid>();
         //public event Func<Guid, ProxyInfo, Task> ProxyChanged;
@@ -27,7 +26,6 @@ namespace MpParserAPI.Services
             IParserDataStorage parserDataStorage,
             ILogger<SpaceProxyService> logger,
             IHubContext<ParserHub> parserHub,
-            INotify notificationService,
             IDbContextFactory<ParserDbContext> dbcontextFactory)
         {
             _httpClientFactory = httpClientFactory;
@@ -35,7 +33,6 @@ namespace MpParserAPI.Services
             _parserDataStorage = parserDataStorage;
             _logger = logger;
             _parserHubContext = parserHub;
-            _notificationService = notificationService;
             _dbContextFactory = dbcontextFactory;
         }
         public bool TryGetProxyOwner(string ipAddress, out Guid parserId)

@@ -95,9 +95,8 @@
     <button class="closeButton" onclick="document.getElementById('bottomSheet').classList.remove('active')">&times;</button>
   </div>
   <div id="sheetContent" class="sheet-content"></div>
-  
   <div class="sheetSaveButtonHandler">
-    <button id="sheetSaveButton" class="sheet-save-button" onclick="saveTags()">Сохранить</button>
+   <button id="sheetSaveButton" class="sheet-save-button" onclick="saveTags()">Сохранить</button>
   </div>
 </div>
 
@@ -138,7 +137,16 @@
         </div>
         <span class="TotalParsingTimeValueText"></span>
       </div>
-      
+         <div class="vertical-separator"></div>
+
+      <div class="SubscriptionTypeContainer">
+        <div class="SubscriptionTypeContainerContainer">
+          <span class="TotalParsingTimeNameText">Ваш тип подписки</span>
+          <img src="./Assets/subscription.png"/>
+        </div>
+        <span class="SubscriptionTypeText"></span>
+      </div>
+
       <div class="vertical-separator"></div>
       <div class="CopyButtonDiv">
           <button class="CopyAuthButton" onclick="CopyParserIdAndPassword()">Копировать логин и пароль</button>
@@ -153,6 +161,12 @@
     </div>
   </div>
 </section>
+
+<div class="ErrorPopup hidden" id="ErrorPopup">
+  <span class="ErrorMessage">Произошла ошибка</span>
+  <button class="ErrorCloseBtn" id="ErrorCloseBtn">&times;</button>
+</div>
+
 
   <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>

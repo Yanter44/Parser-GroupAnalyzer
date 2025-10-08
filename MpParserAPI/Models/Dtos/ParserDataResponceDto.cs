@@ -14,6 +14,7 @@
         public List<string> UserGroupsList { get; set; }
         public string RemainingParsingTimeHoursMinutes { get; set; }
         public string TotalParsingTime { get; set; }
+        public string ParserSubscriptionType { get; set; }
 
     }
 }

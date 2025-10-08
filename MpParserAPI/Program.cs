@@ -42,7 +42,7 @@ builder.Services.AddTransient<IGenerator, Generator>();
 builder.Services.AddScoped<IAdmin, AdminService>();
 builder.Services.AddHostedService<ParserQueueProcessor>();
 builder.Services.AddScoped<IUpdateHandler, UpdateHandler>();
-builder.Services.AddScoped<ISpaceProxy, SpaceProxyService>();
+builder.Services.AddSingleton<ISpaceProxy, SpaceProxyService>();
 builder.Services.AddScoped<ISubscriptionManager, SubscriptionManager>();
 builder.Services.AddSingleton<IMessageQueueService, MessageQueueService>();
 builder.Services.AddSignalR();

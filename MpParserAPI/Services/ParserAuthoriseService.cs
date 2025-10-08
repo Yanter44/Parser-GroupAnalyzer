@@ -356,6 +356,7 @@ namespace MpParserAPI.Services
             _parserStorage.AddOrUpdateParser(parserId, parser);
 
             parser.Client = new Client(what => Config(what, parserId));
+
             _logger.LogInformation("Создан новый Телеграм клиент для парсера");
             var gettedAvailableProxy = await _spaceProxyService.GetAndSetAvailableProxy(parser.Id);
             
